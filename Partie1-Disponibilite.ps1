@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Partie 1 - Lecture de l'inventaire et test de disponibilité des postes.
 .DESCRIPTION
