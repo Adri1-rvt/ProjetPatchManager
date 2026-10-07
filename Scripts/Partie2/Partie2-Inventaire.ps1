@@ -28,39 +28,6 @@ $credentialFolder = $paths.Credentials
 if (-not $OutputPath) { $OutputPath = Join-Path $paths.Reports 'Inventaire.csv' }
 $dateControle     = Get-Date
 
-# Bloc exécuté SUR chaque poste distant : il ne renvoie que des valeurs simples
-$collecte = {
-    $os   = Get-CimInstance Win32_OperatingSystem
-    $cs   = Get-CimInstance Win32_ComputerSystem
-    $bios = Get-CimInstance Win32_BIOS
-    $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($os.SystemDrive)'"
-    $ver  = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
-    $wu   = Get-Service wuauserv
-
-    # Certains correctifs n'ont pas de date d'installation : on les compte, mais on ne les trie pas
-    $hotfixes = @(Get-HotFix)
-    $dernier  = $hotfixes | Where-Object InstalledOn | Sort-Object InstalledOn -Descending | Select-Object -First 1
-
-    [PSCustomObject]@{
-        NomMachine       = $cs.Name
-        Fabricant        = $cs.Manufacturer
-        Modele           = $cs.Model
-        BIOS             = $bios.SMBIOSBIOSVersion
-        Windows          = $os.Caption -replace '^Microsoft\s+', ''
-        VersionWindows   = "$($ver.DisplayVersion) (build $($os.BuildNumber))"
-        Architecture     = $os.OSArchitecture
-        DernierDemarrage = $os.LastBootUpTime
-        RAM_Go           = [math]::Round($cs.TotalPhysicalMemory / 1GB, 1)
-        DisqueLibre_Go   = [math]::Round($disk.FreeSpace / 1GB, 1)
-        DisqueTotal_Go   = [math]::Round($disk.Size / 1GB, 1)
-        NbMisesAJour     = $hotfixes.Count
-        DerniereMiseAJour = $dernier.InstalledOn
-        DerniereKB       = $dernier.HotFixID
-        WindowsUpdate    = [string]$wu.Status
-        WindowsUpdateDemarrage = [string]$wu.StartType
-    }
-}
-
 # Objet "vide" : même structure pour tous les postes, accessibles ou non
 function New-InventoryRecord {
     param($Computer)
@@ -117,13 +84,21 @@ $inventaire = foreach ($c in $computers) {
 
     # 3. Collecte distante : une erreur sur ce poste n'arrête pas le script
     try {
-        $info = Invoke-Command -ComputerName $c.IP -Credential $cred -ScriptBlock $collecte -ErrorAction Stop
+        $info = Invoke-PatchAudit -Computer $c -Credential $cred
         $record.Etat = 'Accessible'
-        foreach ($prop in 'NomMachine', 'Fabricant', 'Modele', 'BIOS', 'Windows', 'VersionWindows',
-                          'Architecture', 'DernierDemarrage', 'RAM_Go', 'DisqueLibre_Go', 'DisqueTotal_Go',
-                          'NbMisesAJour', 'DerniereMiseAJour', 'DerniereKB', 'WindowsUpdate', 'WindowsUpdateDemarrage') {
+        foreach ($prop in 'NomMachine', 'Fabricant', 'Modele', 'BIOS', 'Windows', 'Architecture',
+                          'DernierDemarrage', 'RAM_Go', 'DisqueLibre_Go', 'DisqueTotal_Go') {
             $record.$prop = $info.$prop
         }
+        $record.VersionWindows         = "$($info.DisplayVersion) (build $($info.Build))"
+        $record.WindowsUpdate          = $info.ServiceWU
+        $record.WindowsUpdateDemarrage = $info.DemarrageWU
+
+        # Certains correctifs n'ont pas de date d'installation : ils sont comptés, mais pas triés
+        $dernier = $info.Correctifs | Where-Object DateInstallation | Sort-Object DateInstallation -Descending | Select-Object -First 1
+        $record.NbMisesAJour      = $info.Correctifs.Count
+        $record.DerniereMiseAJour = $dernier.DateInstallation
+        $record.DerniereKB        = $dernier.KB
         Write-Host 'OK' -ForegroundColor Green
     }
     catch {

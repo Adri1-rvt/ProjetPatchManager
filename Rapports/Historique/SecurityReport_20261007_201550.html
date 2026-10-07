@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rapport de sécurité du parc - 07/10/2026 20:35:29</title>
+<title>Rapport de sécurité du parc - 07/10/2026 20:15:50</title>
 <style>
   :root { --bg:#f6f7f9; --panel:#ffffff; --ink:#1d2330; --muted:#5b6475; --line:#e2e5ea;
           --ok:#1f8a4c; --ok-bg:#e3f4ea; --warn:#a35c00; --warn-bg:#fdf0dc; --ko:#b42318; --ko-bg:#fde7e5; --accent:#2457c5; }
@@ -38,7 +38,7 @@
 <body>
 <header>
   <h1>Rapport de sécurité du parc</h1>
-  <p>Contrôle du 07/10/2026 20:35:29 &middot; 3 poste(s) audité(s) depuis PC_ADRI1</p>
+  <p>Contrôle du 07/10/2026 20:15:50 &middot; 3 poste(s) audité(s) depuis PC_ADRI1</p>
 </header>
 <main>
   <h2>Synthèse du parc</h2>
@@ -46,29 +46,31 @@
     <div class="card"><div class="value">3</div><div class="label">postes</div></div>
     <div class="card"><div class="value">2</div><div class="label">postes accessibles</div></div>
     <div class="card"><div class="value">1</div><div class="label">postes inaccessibles</div></div>
-    <div class="card"><div class="value">2</div><div class="label">postes conformes</div></div>
-    <div class="card"><div class="value">0</div><div class="label">postes non conformes</div></div>
-    <div class="card"><div class="value">0</div><div class="label">correctifs manquants</div></div>
-    <div class="card"><div class="value">100 %</div><div class="label">Taux de conformit&#233;</div></div>
+    <div class="card"><div class="value">0</div><div class="label">postes conformes</div></div>
+    <div class="card"><div class="value">2</div><div class="label">postes non conformes</div></div>
+    <div class="card"><div class="value">6</div><div class="label">correctifs manquants</div></div>
+    <div class="card"><div class="value">0 %</div><div class="label">Taux de conformit&#233;</div></div>
   </div>
   <div class="rate">
-    <strong>Taux de conformité : 100 %</strong>
-    <span style="color:var(--muted)"> &middot; 2 conforme(s) sur 2 poste(s) contrôlé(s), postes inaccessibles exclus</span>
-    <div class="bar"><span class="ok" style="width:100%"></span></div>
+    <strong>Taux de conformité : 0 %</strong>
+    <span style="color:var(--muted)"> &middot; 0 conforme(s) sur 2 poste(s) contrôlé(s), postes inaccessibles exclus</span>
+    <div class="bar"><span class="ko" style="width:0%"></span></div>
   </div>
 
-  <h2>Postes nécessitant une intervention (1)</h2>
+  <h2>Postes nécessitant une intervention (3)</h2>
   <div class="scroll"><table>
     <tr><th>Poste</th><th>Adresse IP</th><th>État</th><th>Motif</th></tr>
+    <tr><td><strong>PC01</strong></td><td>192.168.93.11</td><td><span class="badge warn">NON CONFORME</span></td><td>Correctif(s) manquant(s) : KB5124007, KB5129195, KB5128942</td></tr>
+    <tr><td><strong>PC02</strong></td><td>192.168.93.13</td><td><span class="badge warn">NON CONFORME</span></td><td>Correctif(s) manquant(s) : KB5124007, KB5129195, KB5128942</td></tr>
     <tr><td><strong>PC03</strong></td><td>192.168.93.20</td><td><span class="badge ko">INACCESSIBLE</span></td><td>Ping sans r&#233;ponse</td></tr>
   </table></div>
 
   <h2>Détail par poste</h2>
   <div class="scroll"><table>
     <tr><th>Poste</th><th>Adresse IP</th><th>Accessibilité</th><th>Windows</th><th>Dernier démarrage</th><th>Windows Update</th><th>KB manquantes</th><th>Liste des KB manquantes</th><th>Conformité</th><th>Contrôle</th></tr>
-    <tr><td><strong>PC01</strong></td><td>192.168.93.11</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 19:25</td><td>Stopped (Manual)</td><td>0 / 3</td><td>&mdash;</td><td><span class="badge ok">CONFORME</span></td><td>07/10/2026 20:35:29</td></tr>
-    <tr><td><strong>PC02</strong></td><td>192.168.93.13</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 19:25</td><td>Stopped (Manual)</td><td>0 / 3</td><td>&mdash;</td><td><span class="badge ok">CONFORME</span></td><td>07/10/2026 20:35:29</td></tr>
-    <tr><td><strong>PC03</strong></td><td>192.168.93.20</td><td><span class="badge ko">Inaccessible</span></td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge ko">INACCESSIBLE</span></td><td>07/10/2026 20:35:29</td></tr>
+    <tr><td><strong>PC01</strong></td><td>192.168.93.11</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 19:25</td><td>Stopped (Manual)</td><td>3 / 3</td><td>KB5124007, KB5129195, KB5128942</td><td><span class="badge warn">NON CONFORME</span></td><td>07/10/2026 20:15:50</td></tr>
+    <tr><td><strong>PC02</strong></td><td>192.168.93.13</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 19:25</td><td>Stopped (Manual)</td><td>3 / 3</td><td>KB5124007, KB5129195, KB5128942</td><td><span class="badge warn">NON CONFORME</span></td><td>07/10/2026 20:15:50</td></tr>
+    <tr><td><strong>PC03</strong></td><td>192.168.93.20</td><td><span class="badge ko">Inaccessible</span></td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge ko">INACCESSIBLE</span></td><td>07/10/2026 20:15:50</td></tr>
   </table></div>
 
   <h2>Politique de correctifs appliquée</h2>

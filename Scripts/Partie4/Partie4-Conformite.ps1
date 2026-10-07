@@ -67,9 +67,7 @@ $resultats = foreach ($c in $computers) {
     }
 
     try {
-        $installes = @(Invoke-Command -ComputerName $c.IP -Credential $cred -ErrorAction Stop -ScriptBlock {
-            Get-HotFix | Select-Object -ExpandProperty HotFixID
-        }) | ForEach-Object { $_.ToUpper() }
+        $installes = @((Invoke-PatchAudit -Computer $c -Credential $cred).Correctifs | ForEach-Object { $_.KB })
     }
     catch {
         $r.Detail = "Collecte échouée : $($_.Exception.Message)"

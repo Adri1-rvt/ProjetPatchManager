@@ -25,3 +25,44 @@
 07/10/2026 19:40:15 ; Fin de l'audit
 07/10/2026 19:40:15 ; Simulation ; notification construite mais non envoyée (3 anomalie(s))
 07/10/2026 19:47:50 ; Notification envoyée à adrien.rivet@efrei.net
+07/10/2026 19:58:04 ; Audit de sécurité ; 2 risque(s) ; 6 point(s) d'attention
+07/10/2026 20:04:46 ; PC01 ; ERREUR ; Durcissement non appliqué ; Cannot validate argument on parameter 'Description'. The character length of the 55 argument is too long. Shorten the character length of the argument so it is fewer than or equal to "48" characters, and then try the command again.
+07/10/2026 20:04:58 ; PC02 ; ERREUR ; Durcissement non appliqué ; Cannot validate argument on parameter 'Description'. The character length of the 55 argument is too long. Shorten the character length of the argument so it is fewer than or equal to "48" characters, and then try the command again.
+07/10/2026 20:07:11 ; PC01 ; Durcissement appliqué ; 3 action(s)
+07/10/2026 20:07:21 ; PC02 ; Durcissement appliqué ; 3 action(s)
+07/10/2026 20:09:30 ; Début de l'audit
+07/10/2026 20:09:30 ; PC01 ; Accessible
+07/10/2026 20:09:45 ; PC01 ; ERREUR ; Collecte échouée
+07/10/2026 20:09:45 ; PC02 ; Accessible
+07/10/2026 20:10:01 ; PC02 ; ERREUR ; Collecte échouée
+07/10/2026 20:10:05 ; PC03 ; Ping sans réponse
+07/10/2026 20:10:05 ; Rapport généré
+07/10/2026 20:10:05 ; Fin de l'audit
+07/10/2026 20:15:08 ; PC01 ; Durcissement appliqué ; 4 action(s)
+07/10/2026 20:15:16 ; PC02 ; Durcissement appliqué ; 4 action(s)
+07/10/2026 20:15:51 ; Début de l'audit
+07/10/2026 20:15:51 ; PC01 ; Accessible
+07/10/2026 20:15:54 ; PC01 ; Non conforme ; KB5124007, KB5129195, KB5128942
+07/10/2026 20:15:54 ; PC02 ; Accessible
+07/10/2026 20:15:57 ; PC02 ; Non conforme ; KB5124007, KB5129195, KB5128942
+07/10/2026 20:16:01 ; PC03 ; Ping sans réponse
+07/10/2026 20:16:01 ; Rapport généré
+07/10/2026 20:16:01 ; Fin de l'audit
+07/10/2026 20:17:37 ; Audit de sécurité ; 0 risque(s) ; 2 point(s) d'attention
+07/10/2026 20:25:27 ; PC01 ; ERREUR ; Point de terminaison JEA non vérifié ; Accès refusé 
+07/10/2026 20:26:07 ; PC02 ; ERREUR ; Point de terminaison JEA non vérifié ; Accès refusé 
+07/10/2026 20:31:04 ; PC01 ; ERREUR ; Point de terminaison JEA non vérifié ; The term 'Get-CimInstance' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+07/10/2026 20:31:20 ; PC02 ; ERREUR ; Point de terminaison JEA non vérifié ; The term 'Get-CimInstance' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+07/10/2026 20:32:45 ; PC01 ; ERREUR ; Point de terminaison JEA non vérifié ; Alias is not writeable because alias gcls is read-only or constant and cannot be written to.
+07/10/2026 20:32:58 ; PC02 ; ERREUR ; Point de terminaison JEA non vérifié ; Alias is not writeable because alias gcls is read-only or constant and cannot be written to.
+07/10/2026 20:34:42 ; PC01 ; Point de terminaison JEA PatchManagement installé et vérifié
+07/10/2026 20:34:57 ; PC02 ; Point de terminaison JEA PatchManagement installé et vérifié
+07/10/2026 20:35:29 ; Début de l'audit
+07/10/2026 20:35:29 ; PC01 ; Accessible
+07/10/2026 20:35:33 ; PC01 ; Conforme
+07/10/2026 20:35:33 ; PC02 ; Accessible
+07/10/2026 20:35:37 ; PC02 ; Conforme
+07/10/2026 20:35:41 ; PC03 ; Ping sans réponse
+07/10/2026 20:35:41 ; Rapport généré
+07/10/2026 20:35:41 ; Fin de l'audit
+07/10/2026 20:36:28 ; Audit de sécurité ; 0 risque(s) ; 2 point(s) d'attention

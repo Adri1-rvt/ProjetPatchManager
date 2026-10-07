@@ -13,23 +13,26 @@ Projet réalisé en binôme dans le cadre du module *Sécurité des systèmes* (
 - Contrôle de conformité par rapport à une liste de correctifs obligatoires
 - Gestion des postes inaccessibles sans interrompre l'exécution
 - Rapport de sécurité CSV et HTML, avec historique et journal des exécutions
-- *À venir :* notification de l'administrateur en cas d'anomalie
+- Notification de l'administrateur par e-mail en cas d'anomalie
+- Sécurisation : audit de sécurité automatisé, compte de service non administrateur, point de terminaison JEA
 
 ## Arborescence
 
 ```
 ProjetPatchManager\
-├── Config\            computers.txt (inventaire), required-patches.txt (politique)
-├── credentials\       identifiants chiffrés (non versionné)
+├── Config\            computers.txt (inventaire), required-patches.txt (politique), notification.json (e-mail)
+├── credentials\       identifiants chiffrés : svc_patch, admin, SMTP (non versionné)
 ├── Rapports\          CSV, rapports HTML, journal PatchManager.log, Historique\
 ├── Screenshots\       captures d'écran par partie
 └── Scripts\
-    ├── Commun\        PatchManager.psm1 (module commun), Initialize-Credentials.ps1
+    ├── Commun\        PatchManager.psm1 (module commun), Initialize-Credentials.ps1, Initialize-MailCredential.ps1
     ├── Partie1\       disponibilité des postes, tests Invoke-Command
     ├── Partie2\       inventaire du parc
     ├── Partie3\       inventaire des correctifs
     ├── Partie4\       contrôle de conformité
-    └── Partie6\       rapport de sécurité
+    ├── Partie6\       rapport de sécurité
+    ├── Partie7\       notification
+    └── Partie8\       audit de sécurité, durcissement, JEA
 ```
 
 ## Prérequis
@@ -61,10 +64,11 @@ PC01;192.168.93.11
 PC02;192.168.93.13
 ```
 
-**2. Enregistrer les identifiants une seule fois** (mot de passe chiffré par DPAPI, lisible uniquement par l'utilisateur courant sur ce poste) :
+**2. Enregistrer les identifiants une seule fois** (mot de passe chiffré par DPAPI, lisible uniquement par l'utilisateur courant sur ce poste). Deux comptes sont utilisés : `svc_patch`, compte de service non administrateur pour l'usage courant, et `admin`, réservé au durcissement et à l'audit de sécurité (`-Admin`) :
 
 ```powershell
-.\Scripts\Commun\Initialize-Credentials.ps1
+.\Scripts\Commun\Initialize-Credentials.ps1 -Admin   # compte admin des postes
+.\Scripts\Commun\Initialize-Credentials.ps1          # compte de service svc_patch
 ```
 
 **3. Lancer les scripts :**
@@ -76,14 +80,27 @@ PC02;192.168.93.13
 | `Scripts\Partie3\Partie3-Correctifs.ps1` | Inventaire des correctifs | `Rapports\PatchesInventory.csv`, `Rapports\PatchesSummary.csv` |
 | `Scripts\Partie4\Partie4-Conformite.ps1` | Contrôle de conformité | `Rapports\ComplianceReport.csv` |
 | `Scripts\Partie6\Partie6-RapportSecurite.ps1` | Audit complet et rapport de sécurité | `Rapports\SecurityReport.csv`, `Rapports\SecurityReport.html`, `Rapports\PatchManager.log` |
+| `Scripts\Partie7\Partie7-Notification.ps1 [-RunAudit] [-DryRun]` | E-mail à l'administrateur si un poste est non conforme ou inaccessible | ligne dans `Rapports\PatchManager.log` |
+| `Scripts\Partie8\Partie8-AuditSecurite.ps1` | Audit de la configuration de sécurité (comptes, pare-feu, authentification, JEA, droits) | `Rapports\SecurityAudit.csv` |
+| `Scripts\Partie8\Partie8-Durcissement.ps1` | Crée `svc_patch`, restreint le pare-feu, active la journalisation PowerShell | ligne dans le journal |
+| `Scripts\Partie8\Partie8-InstallJEA.ps1` | Installe le point de terminaison JEA `PatchManagement` | ligne dans le journal |
+| `Scripts\Partie8\Diagnostic-JEA.ps1` | Diagnostic du point de terminaison JEA, sans modification | — |
+
+**4. Notification (facultatif) :** renseigner `Config\notification.json` (serveur SMTP, expéditeur, destinataires), puis enregistrer le mot de passe d'application du compte e-mail, chiffré :
+
+```powershell
+.\Scripts\Commun\Initialize-MailCredential.ps1
+```
 
 Si Windows bloque les scripts téléchargés : `Get-ChildItem -Recurse -Filter *.ps*1 | Unblock-File`.
 
 ## Sécurité
 
-- Aucun mot de passe en clair dans les scripts : les identifiants sont stockés chiffrés dans `credentials\`, exclu du dépôt par `.gitignore`.
-- WinRM n'est autorisé que depuis le poste d'administration (règle de pare-feu restreinte).
+- Aucun mot de passe en clair dans les scripts : les identifiants des postes et le mot de passe d'application e-mail sont stockés chiffrés dans `credentials\`, exclu du dépôt par `.gitignore`.
+- Les scripts de collecte utilisent `svc_patch`, un compte **non administrateur**, à travers un point de terminaison **JEA** qui n'expose qu'une seule fonction en lecture seule, exécutée sous un compte virtuel et transcrite.
+- WinRM n'est autorisé que depuis le poste d'administration : règle de pare-feu restreinte, règles par défaut désactivées.
 - `TrustedHosts` ne liste que les postes du parc, jamais `*`.
+- La journalisation des blocs de scripts PowerShell est activée sur les postes.
 
 ## Auteurs
 

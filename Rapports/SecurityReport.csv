@@ -1,4 +1,4 @@
 ﻿"Poste";"AdresseIP";"Accessibilite";"Windows";"DernierDemarrage";"ServiceWU";"DemarrageWU";"KBRequises";"KBManquantes";"ListeKBManquantes";"Conformite";"Intervention";"Motif";"DateControle"
-"PC01";"192.168.93.11";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Running";"Manual";"4";"1";"KB5054156";"NON CONFORME";"True";"Correctif(s) manquant(s) : KB5054156";"07/10/2026 19:40:01"
-"PC02";"192.168.93.13";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Running";"Manual";"4";"1";"KB5054156";"NON CONFORME";"True";"Correctif(s) manquant(s) : KB5054156";"07/10/2026 19:40:01"
-"PC03";"192.168.93.20";"Inaccessible";;;;;"4";;;"INACCESSIBLE";"True";"Ping sans réponse";"07/10/2026 19:40:01"
+"PC01";"192.168.93.11";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Stopped";"Manual";"3";"0";"";"CONFORME";"False";"";"07/10/2026 20:35:29"
+"PC02";"192.168.93.13";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Stopped";"Manual";"3";"0";"";"CONFORME";"False";"";"07/10/2026 20:35:29"
+"PC03";"192.168.93.20";"Inaccessible";;;;;"3";;;"INACCESSIBLE";"True";"Ping sans réponse";"07/10/2026 20:35:29"

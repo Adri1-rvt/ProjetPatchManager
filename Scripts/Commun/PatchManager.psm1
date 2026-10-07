@@ -10,6 +10,8 @@
       - Get-StoredCredential     : chargement des identifiants chiffrés d'un poste
       - Export-ReportCsv         : export CSV robuste (fichier verrouillé par Excel)
       - Write-PatchLog           : ajout d'une ligne au journal PatchManager.log
+      - Invoke-PatchAudit        : collecte complète d'un poste (point de terminaison JEA si disponible)
+      - Get-PatchAuditScript     : code de la collecte, installé tel quel dans le module JEA des postes
     Emplacement attendu : Scripts\Commun\PatchManager.psm1
     Chargement depuis un script situé dans Scripts\PartieN :
       Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
@@ -148,8 +150,11 @@ function Test-ComputerAvailability {
 function Get-StoredCredential {
     <#
     .SYNOPSIS
-        Charge les identifiants chiffrés d'un poste (fichier credentials\<NOM>.xml).
-        Renvoie $null si aucun fichier n'existe pour ce poste.
+        Charge les identifiants chiffrés d'un poste.
+          - par défaut : compte de service du Patch Management (credentials\<NOM>.xml) ;
+          - avec -Admin : compte d'administration du poste (credentials\<NOM>.admin.xml),
+            réservé aux tâches d'administration (durcissement, audit de sécurité).
+        Renvoie $null si aucun fichier n'existe.
     .NOTES
         Les fichiers sont créés par Initialize-Credentials.ps1 avec Export-Clixml :
         le mot de passe est chiffré par DPAPI et ne peut être déchiffré que par
@@ -158,10 +163,12 @@ function Get-StoredCredential {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ComputerName,
-        [Parameter(Mandatory)][string]$CredentialFolder
+        [Parameter(Mandatory)][string]$CredentialFolder,
+        [switch]$Admin
     )
 
-    $file = Join-Path $CredentialFolder "$ComputerName.xml"
+    $suffixe = if ($Admin) { '.admin.xml' } else { '.xml' }
+    $file = Join-Path $CredentialFolder "$ComputerName$suffixe"
     if (Test-Path $file) {
         Import-Clixml -Path $file
     }
@@ -231,4 +238,121 @@ function Write-PatchLog {
     }
 }
 
-Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Get-RequiredPatches, Test-ComputerAvailability, Get-StoredCredential, Export-ReportCsv, Write-PatchLog
+# ---------------------------------------------------------------------
+# Collecte exécutée SUR chaque poste. Source unique :
+#   - envoyée telle quelle par Invoke-PatchAudit (point de terminaison standard) ;
+#   - installée dans la fonction Get-PatchAuditData du module JEA des postes.
+# Elle ne renvoie que des valeurs simples ; la liste des correctifs voyage en JSON.
+# ---------------------------------------------------------------------
+$script:PatchAuditBody = {
+    $os   = Get-CimInstance Win32_OperatingSystem
+    $cs   = Get-CimInstance Win32_ComputerSystem
+    $bios = Get-CimInstance Win32_BIOS
+    $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($os.SystemDrive)'"
+    $ver  = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+    $wu   = Get-Service wuauserv
+
+    $correctifs = @(Get-HotFix | ForEach-Object {
+        [PSCustomObject]@{
+            KB               = ([string]$_.HotFixID).ToUpper()
+            Description      = [string]$_.Description
+            DateInstallation = if ($_.InstalledOn) { $_.InstalledOn.ToString('yyyy-MM-dd') } else { '' }
+            InstallePar      = if ($_.InstalledBy) { [string]$_.InstalledBy } else { 'Non disponible' }
+        }
+    })
+
+    [PSCustomObject]@{
+        NomMachine       = $cs.Name
+        Fabricant        = $cs.Manufacturer
+        Modele           = $cs.Model
+        BIOS             = $bios.SMBIOSBIOSVersion
+        Windows          = $os.Caption -replace '^Microsoft\s+', ''
+        DisplayVersion   = $ver.DisplayVersion
+        Build            = $os.BuildNumber
+        Architecture     = $os.OSArchitecture
+        DernierDemarrage = $os.LastBootUpTime.ToString('yyyy-MM-dd HH:mm:ss')
+        RAM_Go           = [math]::Round($cs.TotalPhysicalMemory / 1GB, 1)
+        DisqueLibre_Go   = [math]::Round($disk.FreeSpace / 1GB, 1)
+        DisqueTotal_Go   = [math]::Round($disk.Size / 1GB, 1)
+        ServiceWU        = [string]$wu.Status
+        DemarrageWU      = [string]$wu.StartType
+        CompteExecution  = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        CorrectifsJson   = ConvertTo-Json -InputObject $correctifs -Compress
+    }
+}
+
+function Get-PatchAuditScript {
+    <#
+    .SYNOPSIS
+        Renvoie le code de la collecte, pour l'installer dans le module JEA des postes.
+    #>
+    $script:PatchAuditBody.ToString()
+}
+
+function Invoke-PatchAudit {
+    <#
+    .SYNOPSIS
+        Collecte en une seule connexion les informations système et les correctifs d'un poste.
+    .DESCRIPTION
+        Se connecte d'abord au point de terminaison JEA « PatchManagement » et y appelle la
+        seule fonction autorisée, Get-PatchAuditData. Si ce point de terminaison n'existe pas
+        sur le poste, la collecte passe par le point de terminaison standard.
+    .OUTPUTS
+        Objet avec les informations du poste, la liste Correctifs (KB, Description,
+        DateInstallation, InstallePar) et le point de terminaison utilisé (Endpoint).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][PSCustomObject]$Computer,
+        [Parameter(Mandatory)][pscredential]$Credential,
+        [string]$ConfigurationName = 'PatchManagement'
+    )
+
+    $endpoint = $ConfigurationName
+    try {
+        $r = Invoke-Command -ComputerName $Computer.IP -Credential $Credential -ConfigurationName $ConfigurationName `
+            -ScriptBlock { Get-PatchAuditData } -ErrorAction Stop
+    }
+    catch {
+        # Le message d'erreur cite le nom du point de terminaison quand celui-ci n'existe pas
+        if ($_.Exception.Message -notmatch [regex]::Escape($ConfigurationName)) { throw }
+        $endpoint = 'microsoft.powershell'
+        $r = Invoke-Command -ComputerName $Computer.IP -Credential $Credential -ScriptBlock $script:PatchAuditBody -ErrorAction Stop
+    }
+
+    $brut = if ($r.CorrectifsJson) { ConvertFrom-Json $r.CorrectifsJson } else { @() }
+    $correctifs = @(@($brut) | Where-Object { $_ } | ForEach-Object {
+        [PSCustomObject]@{
+            KB               = $_.KB
+            Description      = $_.Description
+            DateInstallation = if ($_.DateInstallation) { [datetime]::ParseExact($_.DateInstallation, 'yyyy-MM-dd', $null) } else { $null }
+            InstallePar      = $_.InstallePar
+        }
+    })
+
+    if ($endpoint -ne $ConfigurationName -and $correctifs.Count -eq 0) {
+        Write-Warning "$($Computer.Name) : aucun correctif lisible par le point de terminaison standard. Un compte non administrateur ne peut pas lire les correctifs : installer le point de terminaison JEA (Partie8-InstallJEA.ps1)."
+    }
+
+    [PSCustomObject]@{
+        NomMachine       = $r.NomMachine
+        Fabricant        = $r.Fabricant
+        Modele           = $r.Modele
+        BIOS             = $r.BIOS
+        Windows          = $r.Windows
+        DisplayVersion   = $r.DisplayVersion
+        Build            = $r.Build
+        Architecture     = $r.Architecture
+        DernierDemarrage = [datetime]::ParseExact($r.DernierDemarrage, 'yyyy-MM-dd HH:mm:ss', $null)
+        RAM_Go           = $r.RAM_Go
+        DisqueLibre_Go   = $r.DisqueLibre_Go
+        DisqueTotal_Go   = $r.DisqueTotal_Go
+        ServiceWU        = $r.ServiceWU
+        DemarrageWU      = $r.DemarrageWU
+        CompteExecution  = $r.CompteExecution
+        Correctifs       = $correctifs
+        Endpoint         = $endpoint
+    }
+}
+
+Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Get-RequiredPatches, Test-ComputerAvailability, Get-StoredCredential, Export-ReportCsv, Write-PatchLog, Invoke-PatchAudit, Get-PatchAuditScript

@@ -256,7 +256,7 @@ Le projet sépare la configuration, le code, les identifiants et les résultats 
 ```
 ProjetPatchManager\
 ├── Config\            computers.txt, required-patches.txt, notification.json
-├── credentials\       identifiants chiffrés, dont smtp.xml (exclu de Git)
+├── credentials\       identifiants chiffrés : <NOM>.xml (svc_patch), <NOM>.admin.xml (admin), smtp.xml
 ├── Rapports\          CSV, rapports HTML, journal PatchManager.log
 │   └── Historique\    copies horodatées des rapports HTML
 ├── Screenshots\       captures par partie
@@ -267,7 +267,8 @@ ProjetPatchManager\
 │   ├── Partie3\       Partie3-Correctifs.ps1
 │   ├── Partie4\       Partie4-Conformite.ps1
 │   ├── Partie6\       Partie6-RapportSecurite.ps1
-│   └── Partie7\       Partie7-Notification.ps1
+│   ├── Partie7\       Partie7-Notification.ps1
+│   └── Partie8\       Partie8-AuditSecurite.ps1, Partie8-Durcissement.ps1, Partie8-InstallJEA.ps1, Diagnostic-JEA.ps1
 └── README.md
 ```
 
@@ -531,6 +532,119 @@ En cas d'échec, la cause est ajoutée à la ligne d'erreur pour faciliter le di
 - **Coffre de secrets** : si un secret reste nécessaire, le stocker dans un coffre (module PowerShell SecretManagement, Azure Key Vault) plutôt que dans un fichier local.
 - **Solutions de gestion des correctifs** : WSUS, Microsoft Intune, Configuration Manager ou Azure Update Manager intègrent nativement le suivi de conformité et les alertes.
 
+## Partie 8 – Sécurisation de la solution
+
+Un audit automatisé a mesuré l'état de sécurité avant et après durcissement : on passe de 2 risques et 6 points d'attention à 0 risque et 1 point d'attention conservé volontairement, tout en continuant à auditer le parc avec un compte non administrateur.
+
+Quatre scripts composent cette partie :
+
+| Script | Rôle |
+| --- | --- |
+| `Partie8-AuditSecurite.ps1` | Contrôle automatique de la configuration (points 2 à 7), chaque constat classé OK, INFO, ATTENTION ou RISQUE |
+| `Partie8-Durcissement.ps1` | Compte de service non administrateur, pare-feu, journalisation PowerShell |
+| `Partie8-InstallJEA.ps1` | Point de terminaison JEA réservé au compte de service |
+| `Diagnostic-JEA.ps1` | Diagnostic détaillé du point de terminaison JEA, sans modification |
+
+| Contrôle | Avant | Après |
+| --- | --- | --- |
+| Compte utilisé par le Patch Management | `admin`, administrateur | `svc_patch`, non administrateur, via JEA |
+| Pare-feu WinRM | Règle par défaut ouverte à toute adresse (RISQUE) | Seul 192.168.93.1 autorisé |
+| Journalisation PowerShell | Désactivée | Script Block Logging activé + transcription des sessions JEA |
+| Point de terminaison JEA | Absent | Présent, réservé à `svc_patch` |
+| LocalAccountTokenFilterPolicy | 1 | 1, conservé volontairement (voir point 3) |
+| Bilan de l'audit | 2 risques, 6 points d'attention | 0 risque, 2 points d'attention (le même réglage sur les deux VM) |
+
+**Point 1 – Principaux risques liés à PowerShell Remoting / WinRM**
+
+- **Mouvement latéral** : un attaquant qui obtient des identifiants d'administration peut exécuter du code sur tous les postes du parc depuis une seule machine.
+- **Vol et rejeu d'identifiants** : hors domaine, l'authentification se fait en NTLM, exposé au rejeu de l'empreinte du mot de passe (*pass-the-hash*) et au relais NTLM.
+- **Surface d'exposition** : un port 5985 ouvert à tout le réseau permet à n'importe quelle machine de tenter de s'authentifier.
+- **Privilèges excessifs** : un compte administrateur utilisé pour une simple collecte peut tout modifier sur les postes.
+- **Confiance mal maîtrisée** : `TrustedHosts = *` ferait envoyer les identifiants à n'importe quelle machine, y compris une machine piégée.
+- **Absence d'authentification du serveur** : en HTTP hors domaine, le poste d'administration ne peut pas vérifier l'identité du poste contacté.
+- **Traçabilité insuffisante** : sans journalisation PowerShell, les commandes exécutées à distance laissent peu de traces.
+- **Secrets et rapports sur le poste d'administration** : identifiants chiffrés, mot de passe de messagerie et rapports décrivant les failles du parc en font une cible de choix.
+
+**Point 2 – Qui peut ouvrir une session distante ?**
+
+Sur le point de terminaison standard (`microsoft.powershell`), trois entités sont autorisées : INTERACTIF, Administrateurs et Utilisateurs de gestion à distance. Sur chaque VM, le groupe Administrateurs contient `admin` et le compte Administrateur intégré (désactivé par défaut), et le groupe Utilisateurs de gestion à distance contient uniquement `svc_patch`. Le point de terminaison JEA `PatchManagement` n'accepte que `svc_patch`.
+
+**Point 3 – Limitation des privilèges du compte de Patch Management**
+
+Le script de durcissement crée sur chaque poste le compte local `svc_patch`, non administrateur, membre du seul groupe Utilisateurs de gestion à distance. Deux jeux d'identifiants chiffrés coexistent désormais sur le poste d'administration : `credentials\<NOM>.xml` pour `svc_patch`, utilisé par les Parties 2 à 7, et `credentials\<NOM>.admin.xml` pour `admin`, réservé au durcissement et à l'audit de sécurité.
+
+Un compte non administrateur s'est avéré bloqué par défaut à deux niveaux :
+
+1. **Lecture WMI refusée** : l'espace de noms WMI `root\cimv2` n'autorise les connexions distantes qu'aux administrateurs. Accorder à ce groupe les seuls droits « Activer le compte » et « Appel à distance autorisé » a résolu ce premier blocage.
+2. **Correctifs invisibles** : `Get-HotFix` renvoie une liste vide à un compte non administrateur. Les postes paraissaient donc non conformes à tort, avec 3 correctifs « manquants » sur 3.
+
+Remettre le compte administrateur aurait annulé tout le bénéfice. La solution retenue est JEA (point 7) : le compte reste non administrateur, et le droit WMI ajouté à l'étape 1, devenu inutile, a été retiré.
+
+**LocalAccountTokenFilterPolicy est conservé à 1, en connaissance de cause.** À 0, le compte `admin` perdrait ses droits d'administration à distance : le durcissement, l'installation de JEA et l'audit de sécurité devraient se faire depuis la console de chaque VM. Le script de durcissement propose ce réglage (`-DisableLocalAdminRemote`). En production, on l'appliquerait et on administrerait les postes avec des comptes de domaine, que ce réglage ne concerne pas, et dont les mots de passe d'administrateur local seraient gérés par Windows LAPS.
+
+**Point 4 – Accès aux fichiers produits par la solution**
+
+L'audit vérifie les droits NTFS des dossiers `credentials` et `Rapports` et signale tout accès accordé à un groupe large (Tout le monde, Utilisateurs, Utilisateurs authentifiés). Le projet étant placé dans le profil de l'utilisateur, seuls SYSTEM, les administrateurs et cet utilisateur y ont accès. Les identifiants sont en plus chiffrés par DPAPI, donc inutilisables par un autre compte ou sur une autre machine, et le dossier `credentials` est exclu du dépôt Git.
+
+Si le projet était déplacé dans un dossier partagé, les droits seraient à restreindre explicitement, par exemple :
+
+```powershell
+icacls .\credentials /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F"
+```
+
+**Point 5 – Règles du pare-feu associées à WinRM**
+
+L'audit a révélé une faille passée inaperçue en Partie 1 : la règle créée par `Enable-PSRemoting` (`WINRM-HTTP-In-TCP-NoScope`) autorisait WinRM depuis **n'importe quelle adresse** sur un réseau privé. La règle restreinte au poste d'administration ne servait donc à rien, puisque Windows accepte une connexion dès qu'une seule règle l'autorise.
+
+Le script de durcissement vérifie d'abord que la règle limitée à 192.168.93.1 existe, pour ne jamais couper l'accès du poste d'administration, puis désactive les règles par défaut. Relancer `Enable-PSRemoting` les réactiverait : l'audit de sécurité doit donc être relancé après toute intervention sur WinRM.
+
+**Point 6 – Mode d'authentification et cas où Kerberos est préférable**
+
+L'audit a relevé, depuis la session elle-même, le mode d'authentification réellement utilisé : **NTLM**, car les machines ne sont pas membres d'un domaine. L'authentification Basic est désactivée et le trafic non chiffré est refusé, côté client comme côté serveur.
+
+Kerberos est préférable dès que les postes appartiennent à un domaine Active Directory :
+
+- **authentification mutuelle** : le client vérifie aussi l'identité du serveur, ce qui rend `TrustedHosts` inutile ;
+- **pas d'empreinte de mot de passe sur le réseau** : des tickets à durée limitée, qui résistent au relais et au *pass-the-hash* ;
+- **gestion centralisée** : comptes, groupes et stratégies gérés dans l'annuaire, et délégation contrôlable.
+
+Hors domaine, l'alternative est un écouteur **HTTPS** (port 5986) avec un certificat, qui authentifie le serveur et chiffre le transport par TLS.
+
+**Point 7 – Just Enough Administration (JEA)**
+
+JEA permet de créer un point de terminaison PowerShell qui n'expose qu'une liste précise de commandes à une liste précise de comptes. Il a été mis en œuvre sur les deux VM :
+
+| Réglage | Effet |
+| --- | --- |
+| `RoleDefinitions` : `PCxx\svc_patch` → rôle `PatchAudit` | Seul le compte de service peut se connecter |
+| `VisibleFunctions` : `Get-PatchAuditData` | Une seule commande visible, en lecture seule |
+| `SessionType RestrictedRemoteServer` (langage *NoLanguage*) | Ni variables, ni scripts, ni appels .NET |
+| `RunAsVirtualAccount` | Exécution sous un compte virtuel temporaire, administrateur local, créé pour la seule durée de la session |
+| `TranscriptDirectory` | Chaque session est enregistrée dans `C:\ProgramData\JEA\Transcripts` |
+| `ExecutionPolicy RemoteSigned` | Limitée à ce point de terminaison ; la stratégie du poste reste inchangée |
+
+Le code de `Get-PatchAuditData` est exactement celui du module `PatchManager.psm1` (`Get-PatchAuditScript`) : la collecte est identique, quel que soit le point de terminaison. La fonction `Invoke-PatchAudit` passe automatiquement par JEA quand il est installé.
+
+La vérification montre que `svc_patch` obtient les 5 correctifs de chaque poste, la collecte s'exécutant sous l'identité `WinRM Virtual Users\WinRM VA_1_PC01_svc_patch`.
+
+Trois blocages successifs illustrent le principe de JEA, où tout est fermé par défaut :
+
+1. **Stratégie d'exécution** : la stratégie *Restricted* de Windows client empêchait le chargement du module JEA. La stratégie RemoteSigned a été appliquée au seul point de terminaison.
+2. **Modules non chargés** : une session JEA ne charge pas automatiquement les modules, et `Get-CimInstance` était introuvable. Le module JEA importe désormais explicitement `CimCmdlets`.
+3. **Double importation** : importer `CimCmdlets` à la fois par la capacité de rôle et par le module provoquait une erreur sur un alias protégé. Une seule importation suffit.
+
+**Point 8 – Stratégie de conservation des rapports et des journaux**
+
+Certaines mesures sont déjà en place : droits NTFS restreints, identifiants chiffrés, journal alimenté uniquement par ajout, et copie horodatée de chaque rapport HTML dans `Rapports\Historique`. La stratégie complète pour un usage en production s'organise autour des trois menaces citées par le sujet :
+
+| Menace | Mesures proposées |
+| --- | --- |
+| Modification non autorisée | Empreinte SHA-256 de chaque rapport archivé, conservée à part ou signée ; envoi du journal vers le journal d'événements Windows et un collecteur central (Windows Event Forwarding, SIEM) où l'opérateur ne peut pas le réécrire |
+| Suppression | Droits NTFS refusant la suppression au compte d'exploitation ; sauvegarde sur un stockage externe non réinscriptible ; durée de conservation définie (par exemple un an), puis purge contrôlée |
+| Exposition d'informations sensibles | Accès limité aux administrateurs ; chiffrement du disque (BitLocker) ; rapports retirés du dépôt Git, remplacés par un exemple anonymisé ; notifications envoyées uniquement par une messagerie interne |
+
+Les rapports de ce projet listent précisément les postes vulnérables et les correctifs manquants : entre de mauvaises mains, ils constituent une carte des cibles prioritaires. Leur protection relève donc du même niveau d'exigence que celle des identifiants.
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -582,5 +696,6 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Partie 4 : contrôle de conformité et question 7
 - [x] Partie 6 : rapport de sécurité (CSV, HTML, historique, journal)
 - [x] Partie 7 : notification et questions 2 et 3
-- [ ] Partie 8 : sécurisation
+- [x] Partie 8 : audit, durcissement, compte de service, JEA, stratégie de conservation
+- [ ] Insertion des captures d'écran et relecture du rapport
 - [ ] Vidéo de démonstration (environ 15 minutes)

@@ -31,6 +31,7 @@ $summaryCsv       = Join-Path $reportFolder 'PatchesSummary.csv'
 if (-not (Test-Path $reportFolder)) { New-Item -ItemType Directory -Path $reportFolder | Out-Null }
 
 # Bloc commun : liste des correctifs avec les informations demandées.
+# Liste locale (poste d'administration). Sur les postes distants, la même collecte passe par Invoke-PatchAudit.
 # InstalledBy est souvent vide : Get-HotFix (classe Win32_QuickFixEngineering) ne le renseigne pas toujours.
 $listeCorrectifs = {
     Get-HotFix | ForEach-Object {
@@ -90,7 +91,7 @@ foreach ($c in $computers) {
     }
 
     try {
-        $liste = @(Invoke-Command -ComputerName $c.IP -Credential $cred -ScriptBlock $listeCorrectifs -ErrorAction Stop)
+        $liste = @((Invoke-PatchAudit -Computer $c -Credential $cred).Correctifs)
 
         foreach ($p in $liste) {
             $correctifs.Add([PSCustomObject][ordered]@{

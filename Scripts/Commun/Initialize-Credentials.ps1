@@ -11,16 +11,24 @@
 .PARAMETER ComputerName
     Ne (ré)enregistre que les postes indiqués, par exemple après un changement de mot de passe.
 .PARAMETER UserName
-    Nom du compte local sur les postes (par défaut : admin).
+    Nom du compte local sur les postes (par défaut : svc_patch, ou admin avec -Admin).
+.PARAMETER Admin
+    Enregistre le compte d'administration du poste (credentials\<NOM>.admin.xml),
+    utilisé uniquement par les scripts de durcissement et d'audit de sécurité.
 .EXAMPLE
     .\Initialize-Credentials.ps1
     .\Initialize-Credentials.ps1 -ComputerName PC02
+    .\Initialize-Credentials.ps1 -Admin
 #>
 [CmdletBinding()]
 param(
     [string[]]$ComputerName,
-    [string]$UserName = 'admin'
+    [string]$UserName,
+    [switch]$Admin
 )
+
+if (-not $UserName) { $UserName = if ($Admin) { 'admin' } else { 'svc_patch' } }
+$suffixe = if ($Admin) { '.admin.xml' } else { '.xml' }
 
 Import-Module (Join-Path $PSScriptRoot 'PatchManager.psm1') -Force -ErrorAction Stop
 
@@ -49,7 +57,7 @@ foreach ($c in $computers) {
         continue
     }
 
-    $file = Join-Path $credentialFolder "$($c.Name).xml"
+    $file = Join-Path $credentialFolder "$($c.Name)$suffixe"
     $cred | Export-Clixml -Path $file
     Write-Host "$($c.Name) : identifiants enregistrés (chiffrés) dans $file" -ForegroundColor Green
 }

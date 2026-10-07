@@ -40,21 +40,6 @@ Write-PatchLog "Début de l'audit"
 Write-Host "`nAudit de sécurité du parc - $dateTexte" -ForegroundColor Cyan
 Write-Host "Correctifs obligatoires ($($required.Count)) : $($required -join ', ')`n"
 
-# Bloc exécuté sur chaque poste : toutes les informations en une seule connexion
-$collecte = {
-    $os  = Get-CimInstance Win32_OperatingSystem
-    $ver = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
-    $wu  = Get-Service wuauserv
-    [PSCustomObject]@{
-        Windows          = ($os.Caption -replace '^Microsoft\s+', '') + " $($ver.DisplayVersion)"
-        Build            = $os.BuildNumber
-        DernierDemarrage = $os.LastBootUpTime
-        ServiceWU        = [string]$wu.Status
-        DemarrageWU      = [string]$wu.StartType
-        KBInstallees     = @(Get-HotFix | ForEach-Object { $_.HotFixID.ToUpper() })
-    }
-}
-
 # =====================================================================
 # 1. Collecte et analyse, poste par poste
 # =====================================================================
@@ -102,7 +87,7 @@ $rapport = foreach ($c in $computers) {
 
     # Collecte distante
     try {
-        $info = Invoke-Command -ComputerName $c.IP -Credential $cred -ScriptBlock $collecte -ErrorAction Stop
+        $info = Invoke-PatchAudit -Computer $c -Credential $cred
     }
     catch {
         $r.Motif = "Collecte échouée : $($_.Exception.Message)"
@@ -112,13 +97,14 @@ $rapport = foreach ($c in $computers) {
         continue
     }
 
-    $r.Windows          = $info.Windows
-    $r.DernierDemarrage = ([datetime]$info.DernierDemarrage).ToString('dd/MM/yyyy HH:mm')
+    $r.Windows          = "$($info.Windows) $($info.DisplayVersion)"
+    $r.DernierDemarrage = $info.DernierDemarrage.ToString('dd/MM/yyyy HH:mm')
     $r.ServiceWU        = $info.ServiceWU
     $r.DemarrageWU      = $info.DemarrageWU
 
     # Conformité
-    $manquants = @($required | Where-Object { $_ -notin $info.KBInstallees })
+    $kbInstallees = @($info.Correctifs | ForEach-Object { $_.KB })
+    $manquants = @($required | Where-Object { $_ -notin $kbInstallees })
     $r.KBManquantes      = $manquants.Count
     $r.ListeKBManquantes = $manquants -join ', '
 
