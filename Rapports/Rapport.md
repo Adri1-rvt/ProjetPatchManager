@@ -6,6 +6,8 @@ Oct 7, 2026 · @Adrien
 
 Ce projet met en place une solution simplifiée de Patch Management pour un parc Windows, entièrement pilotée en PowerShell depuis un poste d'administration central.
 
+Projet réalisé en binôme par **Adrien Rivet** et **Alexandre Brenski**, dans le cadre du module Sécurité des systèmes (EFREI, S7).
+
 Un poste auquel il manque des correctifs de sécurité constitue un point d'entrée pour un attaquant, et peut servir de rebond vers le reste du réseau. Contrôler l'état des mises à jour poste par poste devient vite inefficace : la solution automatise ces contrôles grâce à PowerShell Remoting (WinRM).
 
 La chaîne visée est la suivante :
