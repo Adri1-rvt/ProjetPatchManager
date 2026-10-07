@@ -124,17 +124,15 @@ $correctifsTries = $correctifs | Sort-Object Poste, @{ Expression = 'DateInstall
 
 $formatDate = { param($d) if ($d) { ([datetime]$d).ToString('dd/MM/yyyy') } else { '' } }
 
-$correctifsTries |
-    Select-Object Poste, AdresseIP, KB, Description,
+$patchesFile = Export-ReportCsv -Path $patchesCsv -InputObject @(
+    $correctifsTries | Select-Object Poste, AdresseIP, KB, Description,
         @{ Name = 'DateInstallation'; Expression = { & $formatDate $_.DateInstallation } },
-        InstallePar |
-    Export-Csv -Path $patchesCsv -Delimiter ';' -NoTypeInformation -Encoding UTF8
+        InstallePar)
 
-$synthese |
-    Select-Object Poste, AdresseIP, Etat, NbCorrectifs,
+$summaryFile = Export-ReportCsv -Path $summaryCsv -InputObject @(
+    $synthese | Select-Object Poste, AdresseIP, Etat, NbCorrectifs,
         @{ Name = 'DateDernier'; Expression = { & $formatDate $_.DateDernier } },
-        DerniereKB, Erreur |
-    Export-Csv -Path $summaryCsv -Delimiter ';' -NoTypeInformation -Encoding UTF8
+        DerniereKB, Erreur)
 
 Write-Host "`n=== Inventaire des correctifs (trié par poste puis date décroissante) ===" -ForegroundColor Cyan
 $correctifsTries | Format-Table Poste,
@@ -150,5 +148,5 @@ $synthese | Format-Table Poste,
     Etat -AutoSize
 
 Write-Host "Fichiers produits :" -ForegroundColor Cyan
-Write-Host "  $patchesCsv"
-Write-Host "  $summaryCsv"
+Write-Host "  $patchesFile"
+Write-Host "  $summaryFile"

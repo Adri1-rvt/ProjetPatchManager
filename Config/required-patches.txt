@@ -1,0 +1,8 @@
+﻿# Correctifs de sécurité obligatoires - un numéro de KB par ligne
+# Un poste est CONFORME uniquement si TOUS les correctifs ci-dessous sont installés.
+# Les lignes vides et le texte après # sont ignorés.
+KB5124007   # Security Update
+KB5129195   # Security Update
+KB5128942   # Mise à jour du 07/10/2026
+
+# KB5054156   # (simulation)

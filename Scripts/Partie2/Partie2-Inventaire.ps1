@@ -147,8 +147,5 @@ $inventaire | Format-Table -AutoSize -Property `
     Etat
 
 # 5. Export CSV (séparateur ; pour Excel en français)
-$outDir = Split-Path $OutputPath -Parent
-if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
-
-$inventaire | Export-Csv -Path $OutputPath -Delimiter ';' -NoTypeInformation -Encoding UTF8
-Write-Host "Inventaire exporté : $OutputPath" -ForegroundColor Cyan
+$fichier = Export-ReportCsv -InputObject $inventaire -Path $OutputPath
+Write-Host "Inventaire exporté : $fichier" -ForegroundColor Cyan

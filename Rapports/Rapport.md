@@ -257,11 +257,13 @@ ProjetPatchManager\
 ├── credentials\       identifiants chiffrés (exclu de Git)
 ├── Rapports\          CSV, rapports HTML, journal
 ├── Screenshots\       captures par partie
-└── Scripts\
-    ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1
-    ├── Partie1\       Partie1-Disponibilite.ps1, Partie1-InvokeCommand.ps1
-    ├── Partie2\       Partie2-Inventaire.ps1
-    └── Partie3\       Partie3-Correctifs.ps1
+├── Scripts\
+│   ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1
+│   ├── Partie1\       Partie1-Disponibilite.ps1, Partie1-InvokeCommand.ps1
+│   ├── Partie2\       Partie2-Inventaire.ps1
+│   ├── Partie3\       Partie3-Correctifs.ps1
+│   └── Partie4\       Partie4-Conformite.ps1
+└── README.md
 ```
 
 Le module commun `PatchManager.psm1` expose la fonction `Get-ProjectPaths`, qui calcule tous les chemins du projet à partir de l'emplacement du module lui-même. Les scripts ne contiennent donc aucun chemin écrit en dur : ils chargent le module avec un chemin relatif (`..\Commun\PatchManager.psm1`), puis lui demandent où se trouvent l'inventaire, les identifiants et le dossier des rapports. Une réorganisation future ne demanderait de modifier qu'un seul fichier.
@@ -340,6 +342,64 @@ Les correctifs de tous les postes sont regroupés, triés par poste puis par dat
 
 Les deux VM portent les mêmes correctifs : KB5121794, KB5124007, KB5126052 et KB5129195 installés le 13/09/2026, puis KB5128942 installé le 07/10/2026. Le poste d'administration n'a pas le même niveau de correctifs, ce qui illustre l'intérêt d'un contrôle de conformité centralisé (Partie 4).
 
+## Partie 4 – Contrôle de conformité
+
+Le script `Partie4-Conformite.ps1` compare les correctifs installés sur chaque poste avec une liste de correctifs obligatoires, attribue un état à chaque poste et calcule le taux de conformité du parc.
+
+**Points 1 et 2 – Politique de correctifs**
+
+La politique est définie dans `Config\required-patches.txt`, à raison d'un numéro de KB par ligne, avec des commentaires possibles après `#` :
+
+```
+KB5124007   # Security Update
+KB5129195   # Security Update
+KB5128942   # Mise à jour du 07/10/2026
+```
+
+La fonction `Get-RequiredPatches` du module lit cette liste, met les numéros en majuscules, supprime les doublons et ignore avec un avertissement toute ligne qui n'est pas un numéro de KB valide. Une faute de frappe dans la politique ne peut donc pas fausser silencieusement le contrôle.
+
+**Points 3 et 4 – État de chaque poste**
+
+Pour chaque poste accessible, le script récupère la liste des KB installées puis calcule les KB obligatoires absentes. Le poste reçoit l'un des trois états suivants :
+
+| État | Condition |
+| --- | --- |
+| CONFORME | Tous les correctifs obligatoires sont installés |
+| NON CONFORME | Au moins un correctif obligatoire manque |
+| INACCESSIBLE | Le poste n'a pas pu être contrôlé (ping, WinRM, identifiants ou collecte en échec) |
+
+Pour chaque poste non conforme, le script affiche la liste précise des KB manquantes, avec la date et l'heure du contrôle.
+
+**Points 5 et 6 – Enregistrement et taux de conformité**
+
+Les résultats sont enregistrés dans `Rapports\ComplianceReport.csv` (Poste, Adresse IP, KB requises, KB manquantes, liste des KB manquantes, État, Détail, Date du contrôle). Le taux de conformité est calculé sur les seuls postes contrôlés :
+
+```latex
+\text{Taux} = \frac{\text{postes conformes}}{\text{postes conformes} + \text{postes non conformes}} \times 100
+```
+
+Les postes inaccessibles sont exclus du calcul : leur état réel est inconnu, et les compter comme conformes ou non conformes fausserait le résultat. Ils restent signalés séparément.
+
+**Résultats obtenus**
+
+Deux contrôles ont été réalisés pour démontrer les deux cas :
+
+| Scénario | PC01 | PC02 | PC03 | Taux |
+| --- | --- | --- | --- | --- |
+| Politique initiale (3 KB) | CONFORME | CONFORME | INACCESSIBLE | 100 % |
+| Ajout de KB5054156 à la politique (4 KB) | NON CONFORME (KB5054156 manquante) | NON CONFORME (KB5054156 manquante) | INACCESSIBLE | 0 % |
+
+Le second scénario simule la publication d'un nouveau correctif obligatoire : sans aucun changement sur les postes, l'ajout d'une seule ligne à la politique fait basculer tout le parc en non-conformité.
+
+**Point 7 – Pourquoi la politique de conformité doit-elle être régulièrement mise à jour ?**
+
+- **De nouvelles vulnérabilités sont publiées en continu.** Microsoft publie ses correctifs chaque mois (le « Patch Tuesday »), plus des correctifs d'urgence pour les failles activement exploitées. Une liste figée déclarerait conforme un poste vulnérable aux failles plus récentes, ce qui donne un faux sentiment de sécurité.
+- **Les mises à jour cumulatives se remplacent.** Chaque mise à jour cumulative mensuelle intègre et remplace les précédentes, dont la KB peut disparaître de la liste des correctifs installés. Exiger une ancienne KB remplacée déclarerait non conforme un poste pourtant à jour.
+- **Les KB dépendent de la version de Windows.** Un même correctif porte des numéros différents selon la version (Windows 10, Windows 11 24H2, 26H2…). La politique doit suivre l'évolution du parc.
+- **Les versions en fin de support ne reçoivent plus de correctifs.** Un poste peut n'avoir « aucune KB manquante » simplement parce que Microsoft ne publie plus rien pour sa version : la politique doit alors signaler le système lui-même comme non conforme.
+
+Ce contrôle par numéros de KB reste donc une approche simplifiée. En production, on s'appuierait plutôt sur des outils qui connaissent les relations de remplacement entre correctifs, comme WSUS, Microsoft Intune ou Configuration Manager.
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -357,6 +417,8 @@ Le blocage le plus instructif a été un port WinRM fermé alors que le ping fon
 Le premier problème illustre la différence entre `Test-Connection`, qui vérifie la joignabilité réseau (ICMP), et `Test-WSMan`, qui vérifie que le service WinRM répond réellement sur le port 5985. Une machine peut répondre au ping tout en restant inaccessible pour PowerShell Remoting.
 
 Un dernier problème est apparu après le rangement des scripts dans des sous-dossiers : les scripts cherchaient le module et les fichiers de configuration dans leur propre dossier (`$PSScriptRoot`) et ne les trouvaient plus. Le script de la Partie 3 avait pourtant fonctionné, car le module était resté chargé en mémoire. La correction a consisté à centraliser les chemins dans le module (`Get-ProjectPaths`) et à rendre l'échec de chargement bloquant (`-ErrorAction Stop`).
+
+Lors des tests de la Partie 4, l'export CSV a échoué parce que le fichier était ouvert dans Excel, qui le verrouille. Le script annonçait pourtant un enregistrement réussi. La fonction `Export-ReportCsv` du module corrige ce point : si le fichier cible est verrouillé, les résultats sont écrits dans un fichier horodaté voisin, un avertissement est affiché, et le message final indique le fichier réellement écrit.
 
 ## Choix techniques et sécurité
 
@@ -385,8 +447,8 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Partie 1 : réponses aux questions
 - [x] Partie 2 : inventaire du parc
 - [x] Partie 3 : inventaire des correctifs
-- [x] Réorganisation du projet (Config, Scripts\\PartieN, module commun)
-- [ ] Partie 4 : contrôle de conformité
+- [x] Réorganisation du projet (Config, Scripts\\PartieN, module commun) et README
+- [x] Partie 4 : contrôle de conformité et question 7
 - [ ] Partie 6 : rapport de sécurité
 - [ ] Partie 7 : notification
 - [ ] Partie 8 : sécurisation

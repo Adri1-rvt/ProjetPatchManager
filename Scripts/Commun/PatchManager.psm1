@@ -5,8 +5,10 @@
     Regroupe les fonctions réutilisées par tous les scripts du projet :
       - Get-ProjectPaths          : chemins des dossiers et fichiers du projet
       - Get-ComputerInventory    : lecture de computers.txt
+      - Get-RequiredPatches      : lecture de required-patches.txt
       - Test-ComputerAvailability : test ping + WinRM d'un poste
       - Get-StoredCredential     : chargement des identifiants chiffrés d'un poste
+      - Export-ReportCsv         : export CSV robuste (fichier verrouillé par Excel)
     Emplacement attendu : Scripts\Commun\PatchManager.psm1
     Chargement depuis un script situé dans Scripts\PartieN :
       Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
@@ -68,6 +70,36 @@ function Get-ComputerInventory {
                 IP   = $parts[1].Trim()
             }
         }
+}
+
+function Get-RequiredPatches {
+    <#
+    .SYNOPSIS
+        Lit la liste des correctifs obligatoires (un numéro de KB par ligne).
+        Les lignes vides et les commentaires (#) sont ignorés, les numéros sont
+        mis en majuscules et dédoublonnés. Une ligne qui n'est pas un numéro de KB
+        valide (KB suivi de chiffres) est signalée puis ignorée.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        throw "Liste des correctifs obligatoires introuvable : $Path"
+    }
+
+    $kbs = Get-Content -Path $Path |
+        ForEach-Object { ($_ -split '#')[0].Trim().ToUpper() } |
+        Where-Object { $_ -ne '' } |
+        ForEach-Object {
+            if ($_ -match '^KB\d+$') { $_ }
+            else { Write-Warning "Ligne ignorée (numéro de KB invalide) : $_" }
+        } |
+        Select-Object -Unique
+
+    if (-not $kbs) {
+        throw "Aucun correctif obligatoire valide dans $Path"
+    }
+    @($kbs)
 }
 
 function Test-ComputerAvailability {
@@ -135,4 +167,37 @@ function Get-StoredCredential {
     }
 }
 
-Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Test-ComputerAvailability, Get-StoredCredential
+function Export-ReportCsv {
+    <#
+    .SYNOPSIS
+        Exporte des objets en CSV (séparateur ;, UTF-8 avec BOM, lisible par Excel en français).
+    .DESCRIPTION
+        Si le fichier cible est verrouillé (typiquement ouvert dans Excel), les résultats ne
+        sont pas perdus : ils sont écrits dans un fichier horodaté à côté, par exemple
+        ComplianceReport_20261007_185119.csv, et un avertissement est affiché.
+    .OUTPUTS
+        Le chemin du fichier réellement écrit.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$InputObject,
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    $dir = Split-Path $Path -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+
+    try {
+        $InputObject | Export-Csv -Path $Path -Delimiter ';' -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
+        return $Path
+    }
+    catch {
+        $nom = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+        $alt = Join-Path $dir ('{0}_{1}.csv' -f $nom, (Get-Date -Format 'yyyyMMdd_HHmmss'))
+        Write-Warning "Impossible d'écrire $Path (fichier ouvert dans Excel ?). Résultats enregistrés dans $alt"
+        $InputObject | Export-Csv -Path $alt -Delimiter ';' -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
+        return $alt
+    }
+}
+
+Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Get-RequiredPatches, Test-ComputerAvailability, Get-StoredCredential, Export-ReportCsv
