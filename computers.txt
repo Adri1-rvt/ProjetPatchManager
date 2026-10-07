@@ -1,0 +1,6 @@
+# Inventaire du parc - format : NOM;ADRESSE_IP
+# Les lignes vides et celles commençant par # sont ignorées
+PC01;192.168.93.11
+PC02;192.168.93.13
+# Poste volontairement inexistant : sert à tester le cas "Inaccessible"
+PC03;192.168.93.20
