@@ -11,19 +11,21 @@
          sans interrompre le traitement des autres postes ;
       4. affiche un tableau récapitulatif et exporte l'inventaire en CSV.
 .PARAMETER OutputPath
-    Fichier CSV produit (par défaut : Rapports\Inventaire.csv).
+    Fichier CSV produit (par défaut : Rapports\Inventaire.csv à la racine du projet).
 .EXAMPLE
     .\Partie2-Inventaire.ps1
 #>
 [CmdletBinding()]
 param(
-    [string]$OutputPath = (Join-Path $PSScriptRoot 'Rapports\Inventaire.csv')
+    [string]$OutputPath
 )
 
-Import-Module (Join-Path $PSScriptRoot 'PatchManager.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
 
-$inventoryPath    = Join-Path $PSScriptRoot 'computers.txt'
-$credentialFolder = Join-Path $PSScriptRoot 'credentials'
+$paths            = Get-ProjectPaths
+$inventoryPath    = $paths.Inventory
+$credentialFolder = $paths.Credentials
+if (-not $OutputPath) { $OutputPath = Join-Path $paths.Reports 'Inventaire.csv' }
 $dateControle     = Get-Date
 
 # Bloc exécuté SUR chaque poste distant : il ne renvoie que des valeurs simples

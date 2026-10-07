@@ -3,7 +3,8 @@
     Enregistre une fois pour toutes les identifiants de chaque poste, chiffrés.
 .DESCRIPTION
     Pour chaque poste joignable de computers.txt, demande le mot de passe du
-    compte d'administration et l'enregistre dans credentials\<NOM>.xml.
+    compte d'administration et l'enregistre dans credentials\<NOM>.xml
+    (dossier credentials à la racine du projet).
     Le mot de passe est chiffré par DPAPI (Export-Clixml) : seul l'utilisateur
     Windows qui a lancé ce script, sur cette machine, peut le déchiffrer.
     Aucun mot de passe n'apparaît en clair dans les scripts.
@@ -21,10 +22,11 @@ param(
     [string]$UserName = 'admin'
 )
 
-Import-Module (Join-Path $PSScriptRoot 'PatchManager.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'PatchManager.psm1') -Force -ErrorAction Stop
 
-$inventoryPath    = Join-Path $PSScriptRoot 'computers.txt'
-$credentialFolder = Join-Path $PSScriptRoot 'credentials'
+$paths            = Get-ProjectPaths
+$inventoryPath    = $paths.Inventory
+$credentialFolder = $paths.Credentials
 
 if (-not (Test-Path $credentialFolder)) {
     New-Item -ItemType Directory -Path $credentialFolder | Out-Null

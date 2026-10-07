@@ -3,12 +3,44 @@
     Module commun du projet Patch Management.
 .DESCRIPTION
     Regroupe les fonctions réutilisées par tous les scripts du projet :
+      - Get-ProjectPaths          : chemins des dossiers et fichiers du projet
       - Get-ComputerInventory    : lecture de computers.txt
       - Test-ComputerAvailability : test ping + WinRM d'un poste
       - Get-StoredCredential     : chargement des identifiants chiffrés d'un poste
-    Chargement dans un script :
-      Import-Module (Join-Path $PSScriptRoot 'PatchManager.psm1') -Force
+    Emplacement attendu : Scripts\Commun\PatchManager.psm1
+    Chargement depuis un script situé dans Scripts\PartieN :
+      Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
 #>
+
+function Get-ProjectPaths {
+    <#
+    .SYNOPSIS
+        Renvoie les chemins du projet, calculés à partir de l'emplacement du module.
+        Les scripts n'ont ainsi aucun chemin écrit en dur : seul ce module connaît
+        l'organisation des dossiers.
+    .NOTES
+        Arborescence :
+          ProjetPatchManager\
+            Config\        computers.txt, required-patches.txt
+            credentials\   identifiants chiffrés (exclu de Git)
+            Rapports\      CSV, rapports HTML, journal
+            Scripts\Commun\PatchManager.psm1   <- ce module
+    #>
+    # GetFullPath normalise le chemin (supprime les '..' éventuels du chemin d'import)
+    $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+    $config  = Join-Path $root 'Config'
+    $reports = Join-Path $root 'Rapports'
+
+    [PSCustomObject]@{
+        Root            = $root
+        Config          = $config
+        Inventory       = Join-Path $config 'computers.txt'
+        RequiredPatches = Join-Path $config 'required-patches.txt'
+        Credentials     = Join-Path $root 'credentials'
+        Reports         = $reports
+        Log             = Join-Path $reports 'PatchManager.log'
+    }
+}
 
 function Get-ComputerInventory {
     <#
@@ -103,4 +135,4 @@ function Get-StoredCredential {
     }
 }
 
-Export-ModuleMember -Function Get-ComputerInventory, Test-ComputerAvailability, Get-StoredCredential
+Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Test-ComputerAvailability, Get-StoredCredential

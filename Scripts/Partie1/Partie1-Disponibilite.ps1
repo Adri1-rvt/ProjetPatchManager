@@ -2,64 +2,38 @@
 .SYNOPSIS
     Partie 1 - Lecture de l'inventaire et test de disponibilité des postes.
 .DESCRIPTION
-    Lit computers.txt (format NOM;IP), puis teste chaque poste par ICMP (ping).
+    Lit Config\computers.txt (format NOM;IP), puis teste chaque poste (ping, puis WinRM).
     Affiche pour chaque machine : nom, adresse IP, état de disponibilité.
+    Les fonctions de lecture et de test sont fournies par le module commun PatchManager.psm1.
 .EXAMPLE
     .\Partie1-Disponibilite.ps1
-    .\Partie1-Disponibilite.ps1 -InventoryPath .\computers.txt
 #>
 [CmdletBinding()]
 param(
-    [string]$InventoryPath = (Join-Path $PSScriptRoot 'computers.txt')
+    [string]$InventoryPath
 )
 
-function Get-ComputerInventory {
-    param([Parameter(Mandatory)][string]$Path)
+Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
+if (-not $InventoryPath) { $InventoryPath = (Get-ProjectPaths).Inventory }
 
-    if (-not (Test-Path $Path)) {
-        throw "Fichier d'inventaire introuvable : $Path"
-    }
-
-    Get-Content -Path $Path |
-        Where-Object { $_.Trim() -ne '' -and -not $_.Trim().StartsWith('#') } |
-        ForEach-Object {
-            $parts = $_.Split(';')
-            if ($parts.Count -lt 2) {
-                Write-Warning "Ligne ignorée (format invalide) : $_"
-                return
-            }
-            [PSCustomObject]@{
-                Name = $parts[0].Trim()
-                IP   = $parts[1].Trim()
-            }
-        }
-}
-
-function Test-ComputerAvailability {
-    param([Parameter(Mandatory)][PSCustomObject]$Computer)
-
-    $online = Test-Connection -ComputerName $Computer.IP -Count 1 -Quiet -ErrorAction SilentlyContinue
-
-    [PSCustomObject]@{
-        Poste        = $Computer.Name
-        'Adresse IP' = $Computer.IP
-        Etat         = if ($online) { 'Accessible' } else { 'Inaccessible' }
-    }
-}
-
-# --- Programme principal ---
 $computers = Get-ComputerInventory -Path $InventoryPath
 Write-Host "$(@($computers).Count) poste(s) trouvé(s) dans l'inventaire.`n" -ForegroundColor Cyan
 
 $results = foreach ($c in $computers) {
-    Test-ComputerAvailability -Computer $c
+    $t = Test-ComputerAvailability -Computer $c
+    [PSCustomObject]@{
+        Poste        = $t.Name
+        'Adresse IP' = $t.IP
+        Etat         = $t.Etat
+        Detail       = if ($t.Erreur) { $t.Erreur } else { 'Ping et WinRM OK' }
+    }
 }
 
 # Affichage coloré
 foreach ($r in $results) {
     $color = if ($r.Etat -eq 'Accessible') { 'Green' } else { 'Red' }
-    Write-Host ("{0,-8} {1,-16} {2}" -f $r.Poste, $r.'Adresse IP', $r.Etat) -ForegroundColor $color
+    Write-Host ("{0,-8} {1,-16} {2,-13} {3}" -f $r.Poste, $r.'Adresse IP', $r.Etat, $r.Detail) -ForegroundColor $color
 }
 
-# On renvoie aussi les objets (réutilisables dans les parties suivantes)
+# On renvoie aussi les objets (réutilisables par d'autres scripts)
 $results

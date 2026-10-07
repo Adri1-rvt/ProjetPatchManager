@@ -247,6 +247,27 @@ Le pare-feu bloque toute connexion entrante qu'aucune règle n'autorise. Sur Win
 
 Les mesures correspondantes sont déjà en partie appliquées (règle de pare-feu limitée au poste d'administration, TrustedHosts restreint) et seront approfondies en Partie 8.
 
+## Organisation du code
+
+Le projet sépare la configuration, le code, les identifiants et les résultats dans des dossiers distincts, et un seul fichier connaît cette organisation.
+
+```
+ProjetPatchManager\
+├── Config\            computers.txt, required-patches.txt
+├── credentials\       identifiants chiffrés (exclu de Git)
+├── Rapports\          CSV, rapports HTML, journal
+├── Screenshots\       captures par partie
+└── Scripts\
+    ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1
+    ├── Partie1\       Partie1-Disponibilite.ps1, Partie1-InvokeCommand.ps1
+    ├── Partie2\       Partie2-Inventaire.ps1
+    └── Partie3\       Partie3-Correctifs.ps1
+```
+
+Le module commun `PatchManager.psm1` expose la fonction `Get-ProjectPaths`, qui calcule tous les chemins du projet à partir de l'emplacement du module lui-même. Les scripts ne contiennent donc aucun chemin écrit en dur : ils chargent le module avec un chemin relatif (`..\Commun\PatchManager.psm1`), puis lui demandent où se trouvent l'inventaire, les identifiants et le dossier des rapports. Une réorganisation future ne demanderait de modifier qu'un seul fichier.
+
+Le chargement du module utilise `-ErrorAction Stop` : si le module est introuvable, le script s'arrête immédiatement avec un message explicite au lieu de poursuivre avec des fonctions restées en mémoire d'une exécution précédente.
+
 ## Partie 2 – Inventaire du parc
 
 Le script `Partie2-Inventaire.ps1` collecte les caractéristiques système et les informations de mise à jour de chaque poste accessible, et exporte le résultat dans `Rapports\Inventaire.csv`.
@@ -286,6 +307,39 @@ Chaque poste est traité dans un bloc `try/catch`. Un poste inaccessible, des id
 
 Le CSV utilise le séparateur `;` et l'encodage UTF-8 avec BOM, pour s'ouvrir directement en colonnes et avec les accents corrects dans Excel en français. PC01 et PC02 ont des caractéristiques identiques, ce qui est attendu puisque PC02 est un clone de PC01.
 
+## Partie 3 – Inventaire des correctifs
+
+Le script `Partie3-Correctifs.ps1` recense les correctifs des postes accessibles et produit `Rapports\PatchesInventory.csv`, trié par poste puis par date d'installation décroissante.
+
+**Points 1 et 2 – Correctifs de la machine locale**
+
+Le script commence par lister les correctifs du poste d'administration avec `Get-HotFix`, en retenant le numéro de KB, la description, la date d'installation et le compte d'installation :
+
+| KB | Description | Date d'installation | Installé par |
+| --- | --- | --- | --- |
+| KB5129195 | Security Update | 18/09/2026 | AUTORITE NT\\Système |
+| KB5124007 | Security Update | 09/09/2026 | AUTORITE NT\\Système |
+| KB5126052 | Update | 09/09/2026 | AUTORITE NT\\Système |
+| KB5054156 | Update | 29/01/2026 | AUTORITE NT\\Système |
+
+Le compte d'installation n'est pas toujours renseigné par `Get-HotFix` (classe WMI `Win32_QuickFixEngineering`). Quand il manque, le script affiche « Non disponible ».
+
+**Points 3 à 5 – Collecte à distance**
+
+Le même bloc de collecte est exécuté sur chaque poste avec `Invoke-Command`. Les postes inaccessibles sont ignorés proprement : leur cause est conservée dans la synthèse, et l'exécution continue. Chaque correctif devient une ligne Poste / Adresse IP / KB / Description / Date d'installation / Installé par.
+
+**Point 6 – Regroupement et synthèse**
+
+Les correctifs de tous les postes sont regroupés, triés par poste puis par date décroissante, et exportés dans `Rapports\PatchesInventory.csv`. Le script affiche ensuite une synthèse par poste, également exportée dans `Rapports\PatchesSummary.csv` pour être réutilisée par le rapport final :
+
+| Poste | Correctifs recensés | Correctif le plus récent | Dernière KB | État |
+| --- | --- | --- | --- | --- |
+| PC01 | 5 | 07/10/2026 | KB5128942 | Accessible |
+| PC02 | 5 | 07/10/2026 | KB5128942 | Accessible |
+| PC03 | — | — | — | Inaccessible |
+
+Les deux VM portent les mêmes correctifs : KB5121794, KB5124007, KB5126052 et KB5129195 installés le 13/09/2026, puis KB5128942 installé le 07/10/2026. Le poste d'administration n'a pas le même niveau de correctifs, ce qui illustre l'intérêt d'un contrôle de conformité centralisé (Partie 4).
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -301,6 +355,8 @@ Le blocage le plus instructif a été un port WinRM fermé alors que le ping fon
 | `git push` rejeté : *Internal Server Error* | Erreur côté serveur GitHub, temporaire | Nouvelle tentative plus tard |
 
 Le premier problème illustre la différence entre `Test-Connection`, qui vérifie la joignabilité réseau (ICMP), et `Test-WSMan`, qui vérifie que le service WinRM répond réellement sur le port 5985. Une machine peut répondre au ping tout en restant inaccessible pour PowerShell Remoting.
+
+Un dernier problème est apparu après le rangement des scripts dans des sous-dossiers : les scripts cherchaient le module et les fichiers de configuration dans leur propre dossier (`$PSScriptRoot`) et ne les trouvaient plus. Le script de la Partie 3 avait pourtant fonctionné, car le module était resté chargé en mémoire. La correction a consisté à centraliser les chemins dans le module (`Get-ProjectPaths`) et à rendre l'échec de chargement bloquant (`-ErrorAction Stop`).
 
 ## Choix techniques et sécurité
 
@@ -328,8 +384,8 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Partie 1, points 1 à 6 : connectivité, inventaire, disponibilité, WinRM, Enter-PSSession, Invoke-Command
 - [x] Partie 1 : réponses aux questions
 - [x] Partie 2 : inventaire du parc
-- [x] Dépôt GitHub privé à jour (dossier `credentials` exclu)
-- [ ] Partie 3 : inventaire des correctifs
+- [x] Partie 3 : inventaire des correctifs
+- [x] Réorganisation du projet (Config, Scripts\\PartieN, module commun)
 - [ ] Partie 4 : contrôle de conformité
 - [ ] Partie 6 : rapport de sécurité
 - [ ] Partie 7 : notification
