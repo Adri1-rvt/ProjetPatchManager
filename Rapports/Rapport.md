@@ -247,6 +247,45 @@ Le pare-feu bloque toute connexion entrante qu'aucune règle n'autorise. Sur Win
 
 Les mesures correspondantes sont déjà en partie appliquées (règle de pare-feu limitée au poste d'administration, TrustedHosts restreint) et seront approfondies en Partie 8.
 
+## Partie 2 – Inventaire du parc
+
+Le script `Partie2-Inventaire.ps1` collecte les caractéristiques système et les informations de mise à jour de chaque poste accessible, et exporte le résultat dans `Rapports\Inventaire.csv`.
+
+**Fondations communes**
+
+Avant l'inventaire, deux éléments réutilisables ont été créés :
+
+- **Le module `PatchManager.psm1`** regroupe les fonctions partagées par tous les scripts : lecture de l'inventaire (`Get-ComputerInventory`), test d'accessibilité (`Test-ComputerAvailability`) et chargement des identifiants (`Get-StoredCredential`). Le test d'accessibilité vérifie désormais le ping puis WinRM, et indique la cause d'un échec (« Ping sans réponse » ou « WinRM inaccessible »).
+- **Le script `Initialize-Credentials.ps1`** enregistre une seule fois les identifiants de chaque poste dans `credentials\<NOM>.xml` avec `Export-Clixml`. Le mot de passe y est chiffré par DPAPI : seul le même utilisateur Windows, sur le même poste, peut le déchiffrer. Le dossier `credentials` est exclu du dépôt Git par le fichier `.gitignore`.
+
+**Informations collectées**
+
+Chaque poste est interrogé en une seule connexion `Invoke-Command`. Le bloc exécuté à distance s'appuie sur les classes CIM de Windows :
+
+| Information | Source sur le poste |
+| --- | --- |
+| Nom, fabricant, modèle, RAM | `Win32_ComputerSystem` |
+| Version du BIOS | `Win32_BIOS` |
+| Édition, architecture, dernier démarrage | `Win32_OperatingSystem` |
+| Version de Windows (ex. 26H2) | Registre `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion` |
+| Espace libre du disque système | `Win32_LogicalDisk` |
+| Nombre de mises à jour, date et KB de la dernière | `Get-HotFix` |
+| État et type de démarrage de Windows Update | `Get-Service wuauserv` |
+
+**Gestion des erreurs**
+
+Chaque poste est traité dans un bloc `try/catch`. Un poste inaccessible, des identifiants absents ou une collecte qui échoue ne bloquent jamais les autres postes. La cause est enregistrée dans la colonne `Erreur` de l'inventaire, et l'état du poste prend la valeur `Inaccessible` ou `Erreur`. Tous les postes partagent la même structure d'objet, ce qui garantit des colonnes identiques dans le CSV.
+
+**Résultat obtenu**
+
+| Poste | Adresse IP | Windows | Architecture | RAM | Disque libre | Mises à jour | Dernière KB | Windows Update | État |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PC01 | 192.168.93.11 | Windows 11 Professionnel 26H2 | 64 bits | 6,1 Go | 26,2 / 48,9 Go | 5 | KB5128942 | Stopped (Manual) | Accessible |
+| PC02 | 192.168.93.13 | Windows 11 Professionnel 26H2 | 64 bits | 6,1 Go | 26,2 / 48,9 Go | 5 | KB5128942 | Stopped (Manual) | Accessible |
+| PC03 | 192.168.93.20 | — | — | — | — | — | — | — | Inaccessible (ping sans réponse) |
+
+Le CSV utilise le séparateur `;` et l'encodage UTF-8 avec BOM, pour s'ouvrir directement en colonnes et avec les accents corrects dans Excel en français. PC01 et PC02 ont des caractéristiques identiques, ce qui est attendu puisque PC02 est un clone de PC01.
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -288,10 +327,10 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Environnement de test : hôte + 2 VM Windows 11 Professionnel en réseau host-only
 - [x] Partie 1, points 1 à 6 : connectivité, inventaire, disponibilité, WinRM, Enter-PSSession, Invoke-Command
 - [x] Partie 1 : réponses aux questions
-- [ ] Partie 2 : inventaire du parc
+- [x] Partie 2 : inventaire du parc
+- [x] Dépôt GitHub privé à jour (dossier `credentials` exclu)
 - [ ] Partie 3 : inventaire des correctifs
 - [ ] Partie 4 : contrôle de conformité
 - [ ] Partie 6 : rapport de sécurité
 - [ ] Partie 7 : notification
 - [ ] Partie 8 : sécurisation
-- [ ] Dépôt GitHub : dernier push à relancer (erreur serveur GitHub)
