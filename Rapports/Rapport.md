@@ -255,18 +255,19 @@ Le projet sépare la configuration, le code, les identifiants et les résultats 
 
 ```
 ProjetPatchManager\
-├── Config\            computers.txt, required-patches.txt
-├── credentials\       identifiants chiffrés (exclu de Git)
+├── Config\            computers.txt, required-patches.txt, notification.json
+├── credentials\       identifiants chiffrés, dont smtp.xml (exclu de Git)
 ├── Rapports\          CSV, rapports HTML, journal PatchManager.log
 │   └── Historique\    copies horodatées des rapports HTML
 ├── Screenshots\       captures par partie
 ├── Scripts\
-│   ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1
+│   ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1, Initialize-MailCredential.ps1
 │   ├── Partie1\       Partie1-Disponibilite.ps1, Partie1-InvokeCommand.ps1
 │   ├── Partie2\       Partie2-Inventaire.ps1
 │   ├── Partie3\       Partie3-Correctifs.ps1
 │   ├── Partie4\       Partie4-Conformite.ps1
-│   └── Partie6\       Partie6-RapportSecurite.ps1
+│   ├── Partie6\       Partie6-RapportSecurite.ps1
+│   └── Partie7\       Partie7-Notification.ps1
 └── README.md
 ```
 
@@ -453,6 +454,83 @@ L'audit du 07/10/2026 à 19:06:50 donne 3 postes, dont 2 accessibles et conforme
 
 Avant d'être exécuté sur le parc, le script a été testé dans un environnement simulé contenant un poste conforme, un poste non conforme avec Windows Update désactivé et un poste inaccessible : le taux calculé était de 50 %, et les deux motifs d'intervention de PC02 apparaissaient correctement.
 
+## Partie 7 – Notification
+
+Le script `Partie7-Notification.ps1` envoie un e-mail à l'administrateur uniquement si au moins un poste est NON CONFORME ou INACCESSIBLE, avec le rapport de sécurité en pièces jointes.
+
+**Point 1 – Détection des anomalies et construction du message**
+
+Le script lit le rapport produit par la Partie 6 (`Rapports\SecurityReport.csv`). L'option `-RunAudit` relance d'abord un audit complet, pour notifier sur des données fraîches ; sans elle, un avertissement s'affiche si le rapport a plus de 24 heures.
+
+- **Aucune anomalie** : le script se termine sans rien envoyer, et le journal l'indique.
+- **Au moins une anomalie** : le message est construit au format demandé, puis envoyé avec le rapport HTML et le rapport CSV en pièces jointes.
+
+```
+Objet : [PATCH MANAGEMENT] Anomalies détectées
+
+Date du contrôle : 07/10/2026
+
+Postes contrôlés      : 3
+Postes non conformes  : 2
+Postes inaccessibles  : 1
+
+PC01 : NON CONFORME
+        KB5054156 manquante
+
+PC02 : NON CONFORME
+        KB5054156 manquante
+
+PC03 : INACCESSIBLE (Ping sans réponse)
+```
+
+L'option `-DryRun` construit et affiche le message sans l'envoyer : elle a permis de valider le contenu avant de configurer le compte e-mail.
+
+**Protection du mot de passe de messagerie**
+
+Aucune information sensible n'est écrite dans le script. Les paramètres d'envoi (serveur SMTP, port, expéditeur, destinataires) sont dans `Config\notification.json`, qui ne contient aucun mot de passe. Le mot de passe est un **mot de passe d'application**, jamais le mot de passe principal du compte. Il est enregistré une seule fois par `Initialize-MailCredential.ps1` dans `credentials\smtp.xml`, chiffré par DPAPI comme les autres identifiants, et ce dossier est exclu du dépôt Git.
+
+L'envoi force TLS 1.2 : Windows PowerShell 5.1 peut sinon négocier un protocole plus ancien, refusé par les fournisseurs de messagerie actuels.
+
+**Traçabilité**
+
+Chaque exécution laisse une trace dans `Rapports\PatchManager.log` :
+
+```
+07/10/2026 19:45:12 ; Notification envoyée à admin@exemple.com
+07/10/2026 19:47:03 ; ERREUR ; Notification non envoyée ; <cause de l'échec>
+07/10/2026 19:48:30 ; Aucune anomalie ; notification non nécessaire
+```
+
+En cas d'échec, la cause est ajoutée à la ligne d'erreur pour faciliter le diagnostic, et le script renvoie le code de sortie 2. Une tâche planifiée peut ainsi détecter qu'une alerte n'est pas partie.
+
+**Tests réalisés**
+
+| Scénario | Résultat attendu | Résultat obtenu |
+| --- | --- | --- |
+| Anomalies, mode `-DryRun` | Message affiché, rien envoyé | Conforme |
+| Anomalies, envoi réel | E-mail reçu avec le rapport HTML et le CSV, envoi tracé | Conforme |
+| Aucune anomalie (PC03 retiré, politique initiale) | Aucun envoi, ligne « Aucune anomalie » dans le journal | Conforme |
+| Échec d'envoi (test en environnement simulé) | Ligne d'erreur dans le journal, code de sortie 2 | Conforme |
+
+**Point 2 – Quels sont les inconvénients de cette solution ?**
+
+- **Commande obsolète** : Microsoft a déclaré `Send-MailMessage` obsolète, car elle ne garantit pas une connexion sécurisée et ne prend pas en charge l'authentification moderne (OAuth 2.0).
+- **Secret de forte valeur** : un mot de passe d'application contourne l'authentification à deux facteurs et donne accès à toute la boîte mail. Il doit être stocké sur le poste d'administration, et le chiffrement DPAPI le lie à un utilisateur et un poste : une tâche planifiée doit tourner sous ce même compte.
+- **Fuite d'informations sensibles** : le message et le rapport joint listent les postes vulnérables et les correctifs manquants. Ces informations transitent et restent stockées chez un fournisseur de messagerie externe, ce qui peut aider un attaquant.
+- **Remise non garantie** : le port SMTP sortant peut être bloqué, le message peut finir en courrier indésirable, et les fournisseurs grand public limitent le volume d'envoi.
+- **Aucun suivi** : un e-mail ne crée ni ticket, ni accusé de lecture, ni escalade. Des alertes répétées finissent par être ignorées.
+- **Silence ambigu** : l'absence d'e-mail peut signifier « aucune anomalie » comme « le script n'a pas tourné », par exemple si le poste d'administration est éteint.
+
+**Point 3 – Quelles alternatives modernes à un simple envoi SMTP ?**
+
+- **Microsoft Graph API** : envoi via l'API Graph avec une application enregistrée dans Microsoft Entra ID et une authentification OAuth 2.0 par certificat. C'est le remplaçant recommandé par Microsoft, sans mot de passe stocké.
+- **Relais SMTP interne** : un connecteur Exchange de l'entreprise, autorisé par adresse IP, évite tout mot de passe et garde les messages à l'intérieur du système d'information.
+- **Messagerie d'équipe** : une publication dans un canal Teams ou Slack par webhook (`Invoke-RestMethod`), visible par toute l'équipe d'exploitation.
+- **Outil de ticketing** : création automatique d'un ticket (GLPI, ServiceNow…), avec un responsable, un suivi et une clôture.
+- **Supervision et SIEM** : écriture des anomalies dans le journal d'événements Windows, collecté par un SIEM (Microsoft Sentinel, Splunk, Wazuh) ou un outil de supervision (Zabbix, Nagios), qui gère les règles d'alerte et détecte aussi l'absence d'exécution.
+- **Coffre de secrets** : si un secret reste nécessaire, le stocker dans un coffre (module PowerShell SecretManagement, Azure Key Vault) plutôt que dans un fichier local.
+- **Solutions de gestion des correctifs** : WSUS, Microsoft Intune, Configuration Manager ou Azure Update Manager intègrent nativement le suivi de conformité et les alertes.
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -503,5 +581,6 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Réorganisation du projet (Config, Scripts\\PartieN, module commun) et README
 - [x] Partie 4 : contrôle de conformité et question 7
 - [x] Partie 6 : rapport de sécurité (CSV, HTML, historique, journal)
-- [ ] Partie 7 : notification
+- [x] Partie 7 : notification et questions 2 et 3
 - [ ] Partie 8 : sécurisation
+- [ ] Vidéo de démonstration (environ 15 minutes)

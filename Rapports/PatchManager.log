@@ -6,3 +6,22 @@
 07/10/2026 19:07:05 ; PC03 ; Ping sans réponse
 07/10/2026 19:07:05 ; Rapport généré
 07/10/2026 19:07:05 ; Fin de l'audit
+07/10/2026 19:39:14 ; Début de l'audit
+07/10/2026 19:39:15 ; PC01 ; Accessible
+07/10/2026 19:39:25 ; PC01 ; Conforme
+07/10/2026 19:39:25 ; PC02 ; Accessible
+07/10/2026 19:39:32 ; PC02 ; Conforme
+07/10/2026 19:39:36 ; PC03 ; Ping sans réponse
+07/10/2026 19:39:36 ; Rapport généré
+07/10/2026 19:39:37 ; Fin de l'audit
+07/10/2026 19:39:37 ; Simulation ; notification construite mais non envoyée (1 anomalie(s))
+07/10/2026 19:40:02 ; Début de l'audit
+07/10/2026 19:40:02 ; PC01 ; Accessible
+07/10/2026 19:40:07 ; PC01 ; Non conforme ; KB5054156
+07/10/2026 19:40:07 ; PC02 ; Accessible
+07/10/2026 19:40:11 ; PC02 ; Non conforme ; KB5054156
+07/10/2026 19:40:15 ; PC03 ; Ping sans réponse
+07/10/2026 19:40:15 ; Rapport généré
+07/10/2026 19:40:15 ; Fin de l'audit
+07/10/2026 19:40:15 ; Simulation ; notification construite mais non envoyée (3 anomalie(s))
+07/10/2026 19:47:50 ; Notification envoyée à adrien.rivet@efrei.net

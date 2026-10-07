@@ -1,0 +1,8 @@
+{
+  "SmtpServer": "smtp.mail.me.com",
+  "Port": 587,
+  "UseSsl": true,
+  "From": "adrien_rivet@icloud.com",
+  "To": [ "adrien.rivet@efrei.net" ],
+  "AttachReport": true
+}

@@ -24,8 +24,8 @@ function Get-ProjectPaths {
     .NOTES
         Arborescence :
           ProjetPatchManager\
-            Config\        computers.txt, required-patches.txt
-            credentials\   identifiants chiffrés (exclu de Git)
+            Config\        computers.txt, required-patches.txt, notification.json
+            credentials\   identifiants chiffrés, dont smtp.xml (exclu de Git)
             Rapports\      CSV, rapports HTML, journal
             Scripts\Commun\PatchManager.psm1   <- ce module
     #>
@@ -42,6 +42,8 @@ function Get-ProjectPaths {
         Credentials     = Join-Path $root 'credentials'
         Reports         = $reports
         Log             = Join-Path $reports 'PatchManager.log'
+        MailConfig      = Join-Path $config 'notification.json'
+        MailCredential  = Join-Path $root 'credentials\smtp.xml'
     }
 }
 
