@@ -1,0 +1,4 @@
+﻿"Poste";"AdresseIP";"Etat";"NomMachine";"Fabricant";"Modele";"BIOS";"Windows";"VersionWindows";"Architecture";"DernierDemarrage";"RAM_Go";"DisqueLibre_Go";"DisqueTotal_Go";"NbMisesAJour";"DerniereMiseAJour";"DerniereKB";"WindowsUpdate";"WindowsUpdateDemarrage";"Erreur";"DateControle"
+"PC01";"192.168.93.11";"Accessible";"PC01";"VMware, Inc.";"VMware20,1";"VMW201.00V.24006586.B64.2406042154";"Windows 11 Professionnel";"26H2 (build 26300)";"64 bits";"07/10/2026 17:41:49";"6,1";"26,2";"48,9";"5";"07/10/2026 00:00:00";"KB5128942";"Stopped";"Manual";;"07/10/2026 18:13:00"
+"PC02";"192.168.93.13";"Accessible";"PC02";"VMware, Inc.";"VMware20,1";"VMW201.00V.24006586.B64.2406042154";"Windows 11 Professionnel";"26H2 (build 26300)";"64 bits";"07/10/2026 17:41:51";"6,1";"26,2";"48,9";"5";"07/10/2026 00:00:00";"KB5128942";"Stopped";"Manual";;"07/10/2026 18:13:00"
+"PC03";"192.168.93.20";"Inaccessible";;;;;;;;;;;;;;;;;"Ping sans réponse";"07/10/2026 18:13:00"
