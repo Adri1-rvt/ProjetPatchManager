@@ -9,6 +9,7 @@
       - Test-ComputerAvailability : test ping + WinRM d'un poste
       - Get-StoredCredential     : chargement des identifiants chiffrés d'un poste
       - Export-ReportCsv         : export CSV robuste (fichier verrouillé par Excel)
+      - Write-PatchLog           : ajout d'une ligne au journal PatchManager.log
     Emplacement attendu : Scripts\Commun\PatchManager.psm1
     Chargement depuis un script situé dans Scripts\PartieN :
       Import-Module (Join-Path $PSScriptRoot '..\Commun\PatchManager.psm1') -Force -ErrorAction Stop
@@ -200,4 +201,32 @@ function Export-ReportCsv {
     }
 }
 
-Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Get-RequiredPatches, Test-ComputerAvailability, Get-StoredCredential, Export-ReportCsv
+function Write-PatchLog {
+    <#
+    .SYNOPSIS
+        Ajoute une ligne horodatée au journal du projet (Rapports\PatchManager.log par défaut).
+        Format : "jj/mm/aaaa hh:mm:ss ; message", par exemple :
+          07/10/2026 19:05:12 ; PC02 ; Non conforme ; KB5054156
+    .NOTES
+        Une erreur d'écriture dans le journal est signalée mais n'interrompt jamais l'audit.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [string]$Path
+    )
+
+    if (-not $Path) { $Path = (Get-ProjectPaths).Log }
+    $dir = Split-Path $Path -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+
+    $ligne = '{0} ; {1}' -f (Get-Date -Format 'dd/MM/yyyy HH:mm:ss'), $Message
+    try {
+        Add-Content -Path $Path -Value $ligne -Encoding UTF8 -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Écriture impossible dans le journal $Path : $($_.Exception.Message)"
+    }
+}
+
+Export-ModuleMember -Function Get-ProjectPaths, Get-ComputerInventory, Get-RequiredPatches, Test-ComputerAvailability, Get-StoredCredential, Export-ReportCsv, Write-PatchLog

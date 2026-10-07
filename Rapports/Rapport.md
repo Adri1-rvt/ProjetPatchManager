@@ -255,14 +255,16 @@ Le projet sépare la configuration, le code, les identifiants et les résultats 
 ProjetPatchManager\
 ├── Config\            computers.txt, required-patches.txt
 ├── credentials\       identifiants chiffrés (exclu de Git)
-├── Rapports\          CSV, rapports HTML, journal
+├── Rapports\          CSV, rapports HTML, journal PatchManager.log
+│   └── Historique\    copies horodatées des rapports HTML
 ├── Screenshots\       captures par partie
 ├── Scripts\
 │   ├── Commun\        PatchManager.psm1, Initialize-Credentials.ps1
 │   ├── Partie1\       Partie1-Disponibilite.ps1, Partie1-InvokeCommand.ps1
 │   ├── Partie2\       Partie2-Inventaire.ps1
 │   ├── Partie3\       Partie3-Correctifs.ps1
-│   └── Partie4\       Partie4-Conformite.ps1
+│   ├── Partie4\       Partie4-Conformite.ps1
+│   └── Partie6\       Partie6-RapportSecurite.ps1
 └── README.md
 ```
 
@@ -400,6 +402,55 @@ Le second scénario simule la publication d'un nouveau correctif obligatoire : s
 
 Ce contrôle par numéros de KB reste donc une approche simplifiée. En production, on s'appuierait plutôt sur des outils qui connaissent les relations de remplacement entre correctifs, comme WSUS, Microsoft Intune ou Configuration Manager.
 
+## Partie 6 – Rapport de sécurité
+
+Le script `Partie6-RapportSecurite.ps1` audite tout le parc en une seule passe et produit un rapport CSV, un rapport HTML, une archive horodatée du rapport HTML et le journal des exécutions.
+
+**Un audit en une seule passe**
+
+Le rapport ne relit pas les fichiers CSV des parties précédentes : il réalise un nouvel audit complet, avec une seule connexion `Invoke-Command` par poste. Toutes les informations du rapport datent ainsi du même contrôle. Assembler des CSV produits à des moments différents pourrait au contraire donner une image incohérente, par exemple un poste conforme dans un fichier et non conforme dans un autre.
+
+**Point 1 – Rapport par poste**
+
+Pour chaque poste, le rapport contient le nom, l'adresse IP, l'état d'accessibilité, la version de Windows, la date du dernier démarrage, l'état et le type de démarrage du service Windows Update, le nombre de correctifs requis et manquants, la liste des KB manquantes, l'état de conformité et la date et l'heure du contrôle. Il est enregistré dans `Rapports\SecurityReport.csv`.
+
+**Point 2 – Synthèse globale et postes nécessitant une intervention**
+
+La synthèse reprend les sept indicateurs demandés. Une section distincte liste les postes nécessitant une intervention, avec le motif. Trois motifs sont détectés :
+
+- un ou plusieurs correctifs obligatoires manquants ;
+- un poste injoignable, avec la cause (ping sans réponse, WinRM inaccessible, identifiants absents ou collecte en échec) ;
+- un service Windows Update **désactivé**. Un tel poste peut être conforme au moment du contrôle, mais il ne recevra plus aucun correctif : il deviendra non conforme à la prochaine mise à jour de la politique.
+
+**Point 3 – Version HTML**
+
+Le rapport HTML est une page autonome, sans dépendance externe, qui s'ouvre dans n'importe quel navigateur. Il présente les indicateurs de la synthèse, une barre de conformité colorée, la liste des postes nécessitant une intervention, le détail par poste avec des badges de couleur (vert pour conforme, orange pour non conforme, rouge pour inaccessible) et la politique de correctifs appliquée. Toutes les valeurs sont encodées avec `HtmlEncode` avant d'être insérées dans la page, pour qu'une donnée collectée sur un poste ne puisse pas injecter de code dans le rapport.
+
+Chaque exécution conserve aussi une copie horodatée dans `Rapports\Historique\`, ce qui permet de suivre l'évolution de la conformité dans le temps.
+
+**Point 4 – Journal des exécutions**
+
+La fonction `Write-PatchLog` du module ajoute chaque étape de l'audit au fichier `Rapports\PatchManager.log`, au format demandé :
+
+```
+07/10/2026 19:06:50 ; Début de l'audit
+07/10/2026 19:06:50 ; PC01 ; Accessible
+07/10/2026 19:06:51 ; PC01 ; Conforme
+07/10/2026 19:06:51 ; PC02 ; Accessible
+07/10/2026 19:06:52 ; PC02 ; Conforme
+07/10/2026 19:06:56 ; PC03 ; Ping sans réponse
+07/10/2026 19:06:56 ; Rapport généré
+07/10/2026 19:06:56 ; Fin de l'audit
+```
+
+Une erreur d'écriture dans le journal est signalée mais n'interrompt jamais l'audit.
+
+**Résultat obtenu**
+
+L'audit du 07/10/2026 à 19:06:50 donne 3 postes, dont 2 accessibles et conformes et 1 inaccessible, pour un taux de conformité de 100 %. Seul PC03 nécessite une intervention (ping sans réponse).
+
+Avant d'être exécuté sur le parc, le script a été testé dans un environnement simulé contenant un poste conforme, un poste non conforme avec Windows Update désactivé et un poste inaccessible : le taux calculé était de 50 %, et les deux motifs d'intervention de PC02 apparaissaient correctement.
+
 ## Problèmes rencontrés et solutions
 
 Le blocage le plus instructif a été un port WinRM fermé alors que le ping fonctionnait, causé par le retour de la carte host-only en profil réseau Public.
@@ -449,6 +500,6 @@ L'environnement est prêt et les points 1 à 4 de la Partie 1 sont validés.
 - [x] Partie 3 : inventaire des correctifs
 - [x] Réorganisation du projet (Config, Scripts\\PartieN, module commun) et README
 - [x] Partie 4 : contrôle de conformité et question 7
-- [ ] Partie 6 : rapport de sécurité
+- [x] Partie 6 : rapport de sécurité (CSV, HTML, historique, journal)
 - [ ] Partie 7 : notification
 - [ ] Partie 8 : sécurisation

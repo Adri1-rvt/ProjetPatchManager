@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rapport de sécurité du parc - 07/10/2026 19:06:50</title>
+<style>
+  :root { --bg:#f6f7f9; --panel:#ffffff; --ink:#1d2330; --muted:#5b6475; --line:#e2e5ea;
+          --ok:#1f8a4c; --ok-bg:#e3f4ea; --warn:#a35c00; --warn-bg:#fdf0dc; --ko:#b42318; --ko-bg:#fde7e5; --accent:#2457c5; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.45; }
+  header { background:#1d2330; color:#fff; padding:28px 32px; }
+  header h1 { margin:0 0 6px; font-size:24px; font-weight:600; }
+  header p { margin:0; color:#c3c9d4; font-size:14px; }
+  main { max-width:1200px; margin:0 auto; padding:24px 32px 40px; }
+  h2 { font-size:18px; margin:32px 0 12px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .card .value { font-size:24px; font-weight:600; }
+  .card .label { font-size:13px; color:var(--muted); }
+  .rate { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:12px; }
+  .bar { height:12px; background:var(--line); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .bar span { display:block; height:100%; }
+  .bar .ok { background:var(--ok); } .bar .warn { background:#e08a00; } .bar .ko { background:var(--ko); }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:14px; }
+  th { text-align:left; background:#eef0f4; color:var(--muted); font-weight:600; padding:10px 12px; }
+  td { padding:10px 12px; border-top:1px solid var(--line); vertical-align:top; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .badge.ok { color:var(--ok); background:var(--ok-bg); }
+  .badge.warn { color:var(--warn); background:var(--warn-bg); }
+  .badge.ko { color:var(--ko); background:var(--ko-bg); }
+  .none { color:var(--ok); font-weight:600; }
+  code { background:#eef0f4; padding:1px 6px; border-radius:4px; font-size:13px; }
+  .scroll { overflow-x:auto; }
+  footer { color:var(--muted); font-size:12px; margin-top:32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rapport de sécurité du parc</h1>
+  <p>Contrôle du 07/10/2026 19:06:50 &middot; 3 poste(s) audité(s) depuis PC_ADRI1</p>
+</header>
+<main>
+  <h2>Synthèse du parc</h2>
+  <div class="cards">
+    <div class="card"><div class="value">3</div><div class="label">postes</div></div>
+    <div class="card"><div class="value">2</div><div class="label">postes accessibles</div></div>
+    <div class="card"><div class="value">1</div><div class="label">postes inaccessibles</div></div>
+    <div class="card"><div class="value">2</div><div class="label">postes conformes</div></div>
+    <div class="card"><div class="value">0</div><div class="label">postes non conformes</div></div>
+    <div class="card"><div class="value">0</div><div class="label">correctifs manquants</div></div>
+    <div class="card"><div class="value">100 %</div><div class="label">Taux de conformit&#233;</div></div>
+  </div>
+  <div class="rate">
+    <strong>Taux de conformité : 100 %</strong>
+    <span style="color:var(--muted)"> &middot; 2 conforme(s) sur 2 poste(s) contrôlé(s), postes inaccessibles exclus</span>
+    <div class="bar"><span class="ok" style="width:100%"></span></div>
+  </div>
+
+  <h2>Postes nécessitant une intervention (1)</h2>
+  <div class="scroll"><table>
+    <tr><th>Poste</th><th>Adresse IP</th><th>État</th><th>Motif</th></tr>
+    <tr><td><strong>PC03</strong></td><td>192.168.93.20</td><td><span class="badge ko">INACCESSIBLE</span></td><td>Ping sans r&#233;ponse</td></tr>
+  </table></div>
+
+  <h2>Détail par poste</h2>
+  <div class="scroll"><table>
+    <tr><th>Poste</th><th>Adresse IP</th><th>Accessibilité</th><th>Windows</th><th>Dernier démarrage</th><th>Windows Update</th><th>KB manquantes</th><th>Liste des KB manquantes</th><th>Conformité</th><th>Contrôle</th></tr>
+    <tr><td><strong>PC01</strong></td><td>192.168.93.11</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 17:41</td><td>Running (Manual)</td><td>0 / 3</td><td>&mdash;</td><td><span class="badge ok">CONFORME</span></td><td>07/10/2026 19:06:50</td></tr>
+    <tr><td><strong>PC02</strong></td><td>192.168.93.13</td><td><span class="badge ok">Accessible</span></td><td>Windows 11 Professionnel 26H2</td><td>07/10/2026 17:41</td><td>Running (Manual)</td><td>0 / 3</td><td>&mdash;</td><td><span class="badge ok">CONFORME</span></td><td>07/10/2026 19:06:50</td></tr>
+    <tr><td><strong>PC03</strong></td><td>192.168.93.20</td><td><span class="badge ko">Inaccessible</span></td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td><span class="badge ko">INACCESSIBLE</span></td><td>07/10/2026 19:06:50</td></tr>
+  </table></div>
+
+  <h2>Politique de correctifs appliquée</h2>
+  <p>3 correctif(s) obligatoire(s) : <code>KB5124007</code> <code>KB5129195</code> <code>KB5128942</code></p>
+
+  <footer>Rapport généré automatiquement par Partie6-RapportSecurite.ps1 &middot; Journal : Rapports\PatchManager.log</footer>
+</main>
+</body>
+</html>
