@@ -32,7 +32,8 @@ ProjetPatchManager\
     ├── Partie4\       contrôle de conformité
     ├── Partie6\       rapport de sécurité
     ├── Partie7\       notification
-    └── Partie8\       audit de sécurité, durcissement, JEA
+    ├── Partie8\       audit de sécurité, durcissement, JEA
+    └── Demo\          Demo.ps1 : démonstration guidée pour la vidéo
 ```
 
 ## Prérequis
@@ -85,6 +86,7 @@ PC02;192.168.93.13
 | `Scripts\Partie8\Partie8-Durcissement.ps1` | Crée `svc_patch`, restreint le pare-feu, active la journalisation PowerShell | ligne dans le journal |
 | `Scripts\Partie8\Partie8-InstallJEA.ps1` | Installe le point de terminaison JEA `PatchManagement` | ligne dans le journal |
 | `Scripts\Partie8\Diagnostic-JEA.ps1` | Diagnostic du point de terminaison JEA, sans modification | — |
+| `Scripts\Demo\Demo.ps1 [-Section N] [-DryRunMail] [-NoPause]` | Démonstration guidée en 10 sections, avec chronomètre | — |
 
 **4. Notification (facultatif) :** renseigner `Config\notification.json` (serveur SMTP, expéditeur, destinataires), puis enregistrer le mot de passe d'application du compte e-mail, chiffré :
 

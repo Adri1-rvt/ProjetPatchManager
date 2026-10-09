@@ -1,4 +1,4 @@
 ﻿"Poste";"AdresseIP";"KBRequises";"KBManquantes";"ListeKBManquantes";"Etat";"Detail";"DateControle"
-"PC01";"192.168.93.11";"4";"1";"KB5054156";"NON CONFORME";;"07/10/2026 18:54:43"
-"PC02";"192.168.93.13";"4";"1";"KB5054156";"NON CONFORME";;"07/10/2026 18:54:43"
-"PC03";"192.168.93.20";"4";;;"INACCESSIBLE";"Ping sans réponse";"07/10/2026 18:54:43"
+"PC01";"192.168.93.11";"3";"0";"";"CONFORME";;"09/10/2026 08:17:44"
+"PC02";"192.168.93.13";"3";"0";"";"CONFORME";;"09/10/2026 08:17:44"
+"PC03";"192.168.93.20";"3";;;"INACCESSIBLE";"Ping sans réponse";"09/10/2026 08:17:44"

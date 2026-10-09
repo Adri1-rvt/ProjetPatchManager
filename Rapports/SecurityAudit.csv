@@ -24,7 +24,6 @@
 "PC02";"LocalAccountTokenFilterPolicy";"ATTENTION";"1 : les administrateurs locaux gardent leurs droits complets à distance";"Remettre à 0 une fois le compte dédié non administrateur en place"
 "PC02";"Journalisation PowerShell";"OK";"Script Block Logging activé";""
 "PC03";"Accessibilité";"INFO";"Poste non contrôlé : Ping sans réponse";""
-"PC_ADRI1 (admin)";"TrustedHosts";"OK";"Limité à : 192.168.93.11,192.168.93.13";""
-"PC_ADRI1 (admin)";"Client WinRM";"OK";"Trafic non chiffré refusé";""
+"PC_ADRI1 (admin)";"Configuration WinRM";"INFO";"Lecture impossible (service WinRM arrêté ?) : Cannot find path 'WSMan:\localhost\Client\TrustedHosts' because it does not exist.";""
 "PC_ADRI1 (admin)";"Droits sur credentials\";"OK";"Accès limité à : AUTORITE NT\Système, BUILTIN\Administrateurs, PC_Adri1\adrie";""
 "PC_ADRI1 (admin)";"Droits sur Rapports\";"OK";"Accès limité à : AUTORITE NT\Système, BUILTIN\Administrateurs, PC_Adri1\adrie";""

@@ -1,4 +1,4 @@
 ﻿"Poste";"AdresseIP";"Accessibilite";"Windows";"DernierDemarrage";"ServiceWU";"DemarrageWU";"KBRequises";"KBManquantes";"ListeKBManquantes";"Conformite";"Intervention";"Motif";"DateControle"
-"PC01";"192.168.93.11";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Stopped";"Manual";"3";"0";"";"CONFORME";"False";"";"07/10/2026 20:35:29"
-"PC02";"192.168.93.13";"Accessible";"Windows 11 Professionnel 26H2";"07/10/2026 19:25";"Stopped";"Manual";"3";"0";"";"CONFORME";"False";"";"07/10/2026 20:35:29"
-"PC03";"192.168.93.20";"Inaccessible";;;;;"3";;;"INACCESSIBLE";"True";"Ping sans réponse";"07/10/2026 20:35:29"
+"PC01";"192.168.93.11";"Accessible";"Windows 11 Professionnel 26H2";"09/10/2026 08:10";"Running";"Manual";"3";"0";"";"CONFORME";"False";"";"09/10/2026 08:18:44"
+"PC02";"192.168.93.13";"Accessible";"Windows 11 Professionnel 26H2";"09/10/2026 08:10";"Running";"Manual";"3";"0";"";"CONFORME";"False";"";"09/10/2026 08:18:44"
+"PC03";"192.168.93.20";"Inaccessible";;;;;"3";;;"INACCESSIBLE";"True";"Ping sans réponse";"09/10/2026 08:18:44"

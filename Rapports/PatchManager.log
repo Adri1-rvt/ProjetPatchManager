@@ -66,3 +66,13 @@
 07/10/2026 20:35:41 ; Rapport généré
 07/10/2026 20:35:41 ; Fin de l'audit
 07/10/2026 20:36:28 ; Audit de sécurité ; 0 risque(s) ; 2 point(s) d'attention
+09/10/2026 08:18:44 ; Début de l'audit
+09/10/2026 08:18:44 ; PC01 ; Accessible
+09/10/2026 08:18:50 ; PC01 ; Conforme
+09/10/2026 08:18:50 ; PC02 ; Accessible
+09/10/2026 08:18:55 ; PC02 ; Conforme
+09/10/2026 08:18:59 ; PC03 ; Ping sans réponse
+09/10/2026 08:18:59 ; Rapport généré
+09/10/2026 08:18:59 ; Fin de l'audit
+09/10/2026 08:19:56 ; Notification envoyée à adrien.rivet@efrei.net
+09/10/2026 08:22:29 ; Audit de sécurité ; 0 risque(s) ; 2 point(s) d'attention
